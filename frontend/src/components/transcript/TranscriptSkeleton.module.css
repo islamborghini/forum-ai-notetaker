@@ -1,0 +1,39 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 0 20px;
+  padding: 6px 10px;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.tsBar {
+  height: 11px;
+  width: 40px;
+  margin-left: auto;
+}
+
+.textBar {
+  height: 14px;
+  border-radius: 4px;
+}
+
+.textBar.short  { width: 75%; }
+.textBar.medium { width: 90%; }
+.textBar.long   { width: 100%; }

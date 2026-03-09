@@ -1,0 +1,30 @@
+export const MOCK_SEGMENTS = [
+  { timestamp: '0:00', text: 'Alright, so today we are picking up from where we left off on CPU scheduling. We covered the basics of preemptive versus non-preemptive scheduling last time.' },
+  { timestamp: '0:42', text: 'The key question any scheduler has to answer is: given a set of runnable threads, which one should the CPU run next?' },
+  { timestamp: '1:15', text: "Let's start with FIFO — First In First Out. Simple idea, you run processes in the order they arrive. No preemption, runs until completion." },
+  { timestamp: '2:03', text: 'The big problem with FIFO is what we call the convoy effect. One long job at the front of the queue holds up everything behind it.' },
+  { timestamp: '2:58', text: "Round Robin tries to fix this by giving each process a small fixed time slice — a quantum — and then rotating. Typical quantum is 10 to 100 milliseconds." },
+  { timestamp: '3:44', text: "Now, what happens if the quantum is too small? You spend more time context switching than doing actual work. That's overhead we can't afford." },
+  { timestamp: '4:31', text: "What if it's too large? You're back to behaving like FIFO. There's a sweet spot, and finding it depends heavily on your workload." },
+  { timestamp: '5:17', text: 'Shortest Job First — SJF — is provably optimal in terms of average wait time. But here\'s the catch: you have to know the job length in advance.' },
+  { timestamp: '6:02', text: 'In practice, we estimate using exponential averaging. Take the last observed burst, weight it against the historical average. It converges quickly.' },
+  { timestamp: '6:48', text: 'Multi-level feedback queues — MLFQ — is probably the most widely deployed approach today. The idea is to approximate SJF without knowing burst times upfront.' },
+  { timestamp: '7:35', text: 'You have multiple queues at different priority levels. New jobs start at the top. If a job uses its full quantum, it drops down a level.' },
+  { timestamp: '8:20', text: "If a job blocks — say it's doing I/O — it stays at its current level or moves up. I/O bound jobs naturally float to the top." },
+  { timestamp: '9:05', text: 'The problem is starvation. A low-priority job can sit there forever if high-priority work keeps arriving. The fix is periodic priority boosting.' },
+  { timestamp: '9:50', text: 'Every so often — say every 100ms — you shove everything back to the top queue. This guarantees eventual progress for everyone.' },
+  { timestamp: '10:36', text: 'Linux uses a variant called CFS — Completely Fair Scheduler. Instead of fixed time slices it tracks virtual runtime and always runs the thread with the lowest vruntime.' },
+  { timestamp: '11:22', text: 'CFS uses a red-black tree ordered by vruntime. Picking the next thread to run is O(log n). Insertion is O(log n). Lookup is O(1) for the minimum.' },
+  { timestamp: '12:08', text: "Okay, let's talk about multiprocessor scheduling because that's where things get genuinely tricky. You can't just have one global run queue." },
+  { timestamp: '12:54', text: "Cache affinity is the core issue. If a thread was running on CPU 0 and has its data in CPU 0's cache, migrating it to CPU 1 causes cold cache misses." },
+  { timestamp: '13:39', text: "Per-CPU run queues solve this but introduce load imbalance. One CPU might be idle while another has 20 threads queued up." },
+  { timestamp: '14:25', text: "Work stealing addresses load imbalance. Idle CPUs peek at other CPUs' queues and steal work. Linux does this with its scheduler domains hierarchy." },
+]
+
+export const MOCK_TRANSCRIPTS = {
+  '1': { id: '1', filename: 'CS162_Lecture_12_Scheduling.mp4', status: 'transcribed', created_at: '2026-03-08T10:30:00Z', duration_seconds: 4320, word_count: 8741, segments: MOCK_SEGMENTS },
+  '2': { id: '2', filename: 'CS162_Lecture_11_Memory.mp4',     status: 'transcribed', created_at: '2026-03-06T09:15:00Z', duration_seconds: 3960, word_count: 7203, segments: MOCK_SEGMENTS.slice(0, 12) },
+  '3': { id: '3', filename: 'CS162_Lecture_13_Sync.mp4',       status: 'processing',  created_at: '2026-03-08T14:00:00Z', duration_seconds: null,  word_count: null,  segments: [] },
+  '4': { id: '4', filename: 'CS162_Lecture_10_Paging.mp4',     status: 'transcribed', created_at: '2026-03-04T11:00:00Z', duration_seconds: 4680, word_count: 9102, segments: MOCK_SEGMENTS },
+  '5': { id: '5', filename: 'CS162_Lecture_09_VM.mp4',         status: 'error',       created_at: '2026-03-02T10:45:00Z', duration_seconds: null,  word_count: null,  segments: [] },
+}

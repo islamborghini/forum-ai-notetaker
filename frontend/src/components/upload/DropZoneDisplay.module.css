@@ -1,0 +1,174 @@
+.dropzone {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2rem;
+  transition: background 400ms ease-out;
+  position: relative;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+}
+
+.dropzone:hover {
+  background: var(--bg-elevated);
+}
+
+.dropzone.accepting {
+  background: var(--bg-accepting);
+  border-color: var(--border-subtle);
+}
+
+.dropzone.rejecting {
+  background: var(--error-subtle);
+  border-color: var(--error);
+}
+
+.visualIndicator {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  align-self: center;
+  margin-top: 3rem;
+  transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dropzone:hover .visualIndicator {
+  transform: scale(1.1);
+}
+
+.dropzone.accepting .visualIndicator {
+  transform: scale(1.5) rotate(90deg);
+}
+
+.crosshairX, .crosshairY {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.3);
+  transition: background 300ms;
+}
+
+.dropzone.accepting .crosshairX,
+.dropzone.accepting .crosshairY {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.crosshairX {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.crosshairY {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.centerDot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: background 300ms, transform 300ms, box-shadow 300ms;
+  box-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+.dropzone.accepting .centerDot {
+  background: var(--text-primary);
+  transform: translate(-50%, -50%) scale(1.5);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.4);
+}
+
+.textContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.primaryInstruction {
+  font-family: var(--font-sans);
+  font-size: 2.5rem;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+  transition: color 300ms;
+}
+
+.dropzone.accepting .primaryInstruction {
+  color: var(--text-primary);
+}
+
+.dropzone.rejecting .primaryInstruction {
+  color: var(--error);
+}
+
+.secondaryInstruction {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.orText {
+  color: var(--text-muted);
+}
+
+.browseLink {
+  color: var(--accent-link);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  transition: color 200ms;
+}
+
+.browseLink:hover {
+  color: var(--text-primary);
+}
+
+.footerSpecs {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-dashed);
+  transition: border-color 300ms, color 300ms;
+}
+
+.dropzone.accepting .footerSpecs {
+  color: var(--text-secondary);
+  border-top-color: var(--border-dashed);
+}
+
+.dot {
+  font-size: 0.5rem;
+}

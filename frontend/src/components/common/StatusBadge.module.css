@@ -1,0 +1,51 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: var(--radius-badge);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Transcribed */
+.transcribed {
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  color: var(--success-text);
+}
+.transcribed .dot { background: var(--success); }
+
+/* Processing */
+.processing {
+  background: var(--warning-subtle);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
+}
+.spinner {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid rgba(245, 158, 11, 0.30);
+  border-top-color: var(--warning);
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Error */
+.error {
+  background: var(--error-subtle);
+  border: 1px solid var(--error-border);
+  color: var(--error);
+}
+.error .dot { background: var(--error); }

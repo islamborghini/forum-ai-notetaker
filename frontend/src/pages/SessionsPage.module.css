@@ -1,0 +1,41 @@
+.pageHeader {
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 3.5rem 0 1.75rem;
+}
+
+.pageTitle {
+  font-family: var(--font-sans);
+  font-size: clamp(2.5rem, 4vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--text-primary);
+  margin: 0 0 0.6rem 0;
+}
+
+.pageSubtitle {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.sessionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error {
+  font-size: 0.875rem;
+  color: var(--error);
+  padding: 12px 16px;
+  background: var(--error-subtle);
+  border: 1px solid var(--error-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}

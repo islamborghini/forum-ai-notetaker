@@ -1,0 +1,8 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 64px;
+  min-height: calc(100vh - var(--nav-height));
+  position: relative;
+  z-index: 1;
+}

@@ -1,0 +1,74 @@
+.wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  background-color: var(--bg-base);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.gridPattern {
+  position: absolute;
+  inset: -100%;
+  width: 300%;
+  height: 300%;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 80px 80px;
+  background-position: center center;
+  transform-origin: center center;
+  transform: perspective(1000px) rotateX(60deg) scale(2) translateY(-10%);
+  animation: moveGrid 20s linear infinite;
+}
+
+.radialMask {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center 50%, transparent 10%, color-mix(in srgb, var(--bg-base) 80%, transparent) 60%, var(--bg-base) 100%);
+}
+
+.orbTop {
+  position: absolute;
+  top: -15vh;
+  left: 50%;
+  width: 60vw;
+  height: 60vh;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, var(--accent-alpha-40) 0%, transparent 60%);
+  filter: blur(80px);
+  animation: pulseOrbTop 8s ease-in-out infinite alternate;
+}
+
+.orbBottom {
+  position: absolute;
+  bottom: -20vh;
+  right: -10vw;
+  width: 50vw;
+  height: 60vh;
+  background: radial-gradient(ellipse at center, var(--accent-orb) 0%, transparent 60%);
+  filter: blur(90px);
+  animation: pulseOrbBottom 12s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes moveGrid {
+  0% { transform: perspective(1000px) rotateX(60deg) scale(2) translateY(0); }
+  100% { transform: perspective(1000px) rotateX(60deg) scale(2) translateY(80px); }
+}
+
+/* orbTop starts at left:50% so translateX(-50%) centers it */
+@keyframes pulseOrbTop {
+  0%   { transform: translateX(-50%) scale(1)   translateY(0);    opacity: 0.7; }
+  50%  { transform: translateX(-50%) scale(1.2)  translateY(20px); opacity: 1;   }
+  100% { transform: translateX(-50%) scale(0.9)  translateY(-10px); opacity: 0.8; }
+}
+
+/* orbBottom is positioned via right/bottom — no translateX needed */
+@keyframes pulseOrbBottom {
+  0%   { transform: scale(1)   translateY(0);    opacity: 0.7; }
+  50%  { transform: scale(1.2)  translateY(-20px); opacity: 1;   }
+  100% { transform: scale(0.9)  translateY(10px); opacity: 0.8; }
+}

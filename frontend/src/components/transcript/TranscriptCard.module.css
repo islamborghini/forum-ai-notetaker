@@ -1,0 +1,30 @@
+.row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 0 20px;
+  padding: 6px 10px;
+  margin: 0 -10px;
+  border-radius: 4px;
+  transition: background 100ms;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.timestamp {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+  opacity: 0.8;
+}
+
+.text {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
