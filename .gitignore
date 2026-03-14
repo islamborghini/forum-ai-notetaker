@@ -1,4 +1,7 @@
 __pycache__/
+*.pyc
+backend/uploads/
+backend/venv/
 *.py[cod]
 .pytest_cache/
 .venv/
