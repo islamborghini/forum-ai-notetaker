@@ -14,6 +14,10 @@ data/*
 uploads/*
 !uploads/.gitkeep
 
+
+test.mp3
+myenv/
+
 *.db
 *.sqlite
 *.sqlite3
