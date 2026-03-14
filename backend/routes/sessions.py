@@ -9,6 +9,7 @@ store it, create a session record, and trigger the pipeline.
 """
 
 import os
+import uuid
 from flask import Blueprint, request, current_app
 
 from utils.responses import success_response, error_response
@@ -78,22 +79,32 @@ def upload_session():
     if not allowed_file(file.filename):
         return error_response("Unsupported file type", 400)
 
-    filename = safe_filename(file.filename)
+    # Keep a cleaned version of the original filename for display.
+    original_filename = safe_filename(file.filename)
+
+    # Store the actual uploaded file using a unique generated name
+    # so two uploads with the same original filename do not overwrite
+    # each other.
+    file_ext = ""
+    if "." in original_filename:
+        file_ext = "." + original_filename.rsplit(".", 1)[1].lower()
+
+    unique_filename = f"{uuid.uuid4().hex}{file_ext}"
 
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     os.makedirs(upload_folder, exist_ok=True)
 
-    file_path = os.path.join(upload_folder, filename)
+    file_path = os.path.join(upload_folder, unique_filename)
 
     # Save the uploaded recording locally.
     file.save(file_path)
 
     # Create a session record through the service layer.
-    # Right now this is mocked in memory so the backend can be tested
-    # before the DB teammate fully plugs in their implementation.
+    # We keep the original cleaned filename in the session metadata
+    # for readability, while the stored path uses the unique name.
     session = create_session_record(
         title=title,
-        filename=filename,
+        filename=original_filename,
         recording_path=file_path,
         status="uploaded"
     )
