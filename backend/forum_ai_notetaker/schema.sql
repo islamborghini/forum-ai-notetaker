@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     original_filename TEXT NOT NULL,
     stored_path TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'uploaded'
-        CHECK (status IN ('uploaded', 'processing', 'transcribed', 'failed')),
+        CHECK (status IN ('uploaded', 'processing', 'transcribed', 'notes_generated', 'failed')),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

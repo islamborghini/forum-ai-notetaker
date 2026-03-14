@@ -17,3 +17,10 @@ uploads/*
 *.db
 *.sqlite
 *.sqlite3
+myenv
+
+# Test media files
+*.mp3
+*.mp4
+*.wav
+*.m4a

@@ -17,6 +17,8 @@ to build a clean backend API that connects everything together.
 from flask import Flask
 from flask_cors import CORS
 
+from forum_ai_notetaker.db import init_db
+
 # Import route groups
 from routes.sessions import sessions_bp
 from routes.transcripts import transcripts_bp
@@ -36,6 +38,9 @@ def create_app():
     # Enable cross-origin requests so the React frontend
     # can communicate with the backend server.
     CORS(app)
+
+    # Create tables if they don't exist yet.
+    init_db()
 
     # Configuration
     # Uploaded recordings will be stored locally for now.
