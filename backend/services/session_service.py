@@ -1,64 +1,49 @@
 """
 Session service layer.
 
-This file acts as the boundary between the backend API layer
-and the eventual database layer.
-
-For now I am using in-memory placeholder storage so the backend
-can actually run and be tested before full DB integration is done.
-That way the routes are already stable and the DB teammate can
-later replace the internals without forcing a rewrite of my API code.
+Connects the backend API to the SQLite database.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
-SESSIONS = []
-NEXT_SESSION_ID = 1
+from forum_ai_notetaker.db import get_connection
+
+
+def _row_to_dict(row) -> dict:
+    return dict(row)
 
 
 def create_session_record(title: str, filename: str, recording_path: str, status: str) -> dict:
-    """
-    Create a new session record.
-
-    For now this stores data in memory.
-    Later this function should be replaced with real DB logic.
-    """
-    global NEXT_SESSION_ID
-
-    session = {
-        "id": NEXT_SESSION_ID,
-        "title": title,
-        "filename": filename,
-        "recording_path": recording_path,
-        "status": status
-    }
-
-    SESSIONS.append(session)
-    NEXT_SESSION_ID += 1
-    return session
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO sessions (title, original_filename, stored_path, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (title, filename, recording_path, status, now, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM sessions WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    return _row_to_dict(row)
 
 
 def fetch_all_sessions() -> list[dict]:
-    """
-    Return all sessions.
-    """
-    return SESSIONS
+    with get_connection() as conn:
+        rows = conn.execute("SELECT * FROM sessions ORDER BY created_at DESC").fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 def fetch_one_session(session_id: int) -> Optional[dict]:
-    """
-    Return one session by ID.
-    """
-    return next((session for session in SESSIONS if session["id"] == session_id), None)
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    return _row_to_dict(row) if row else None
 
 
 def update_session_status(session_id: int, new_status: str) -> None:
-    """
-    Update the status of a session.
-
-    This matters because the frontend dashboard needs to know
-    what stage of the workflow a session is currently in.
-    """
-    session = fetch_one_session(session_id)
-    if session:
-        session["status"] = new_status
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            "UPDATE sessions SET status = ?, updated_at = ? WHERE id = ?",
+            (new_status, now, session_id),
+        )
+        conn.commit()
