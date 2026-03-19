@@ -42,7 +42,7 @@ pip install openai-whisper
 python app.py
 ```
 
-The server runs at `http://localhost:5000`. The database is auto-initialized on startup.
+The server runs at `http://127.0.0.1:5000`. The database is auto-initialized on startup.
 
 ### Frontend
 
@@ -58,18 +58,18 @@ The dev server runs at `http://localhost:5173`.
 
 ### Health
 
-| Method | Endpoint       | Description          |
-|--------|---------------|----------------------|
-| GET    | `/`           | API running message  |
-| GET    | `/api/health` | Health check         |
+| Method | Endpoint      | Description         |
+| ------ | ------------- | ------------------- |
+| GET    | `/`           | API running message |
+| GET    | `/api/health` | Health check        |
 
 ### Sessions
 
-| Method | Endpoint                    | Description              |
-|--------|-----------------------------|--------------------------|
-| GET    | `/api/sessions/`            | List all sessions        |
-| GET    | `/api/sessions/<id>`        | Get session by ID        |
-| POST   | `/api/sessions/upload`      | Upload a recording       |
+| Method | Endpoint               | Description        |
+| ------ | ---------------------- | ------------------ |
+| GET    | `/api/sessions/`       | List all sessions  |
+| GET    | `/api/sessions/<id>`   | Get session by ID  |
+| POST   | `/api/sessions/upload` | Upload a recording |
 
 **Upload request:**
 
@@ -81,7 +81,23 @@ curl -X POST http://localhost:5000/api/sessions/upload \
 
 ### Transcripts
 
-| Method | Endpoint                         | Description                    |
-|--------|----------------------------------|--------------------------------|
-| GET    | `/api/transcripts/<session_id>`  | Get transcript for a session   |
+| Method | Endpoint                        | Description                  |
+| ------ | ------------------------------- | ---------------------------- |
+| GET    | `/api/transcripts/<session_id>` | Get transcript for a session |
 
+## Troubleshooting
+
+### Whisper model download fails with SSL certificate error
+
+If you see errors like `SSLCertVerificationError` while Whisper downloads `base.en`:
+
+1. Run macOS Python certificate installer (python.org install):
+
+   ```bash
+   open "/Applications/Python 3.14/Install Certificates.command"
+   ```
+
+2. Retry:
+   ```bash
+   python -c "import whisper; whisper.load_model('base.en'); print('whisper ok')"
+   ```
