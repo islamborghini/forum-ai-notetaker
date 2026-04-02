@@ -16,6 +16,9 @@ to build a clean backend API that connects everything together.
 
 from pathlib import Path
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 from flask_cors import CORS
 
@@ -25,6 +28,7 @@ from forum_ai_notetaker.db import init_db
 from routes.sessions import sessions_bp
 from routes.transcripts import transcripts_bp
 from routes.notes import notes_bp
+from routes.auth import auth_bp
 
 
 def create_app():
@@ -56,6 +60,7 @@ def create_app():
     app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
     app.register_blueprint(transcripts_bp, url_prefix="/api/transcripts")
     app.register_blueprint(notes_bp, url_prefix="/api/notes")
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
 
     @app.route("/", methods=["GET"])
     def home():
