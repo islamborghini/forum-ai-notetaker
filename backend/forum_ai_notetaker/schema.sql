@@ -42,8 +42,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     stored_path TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'uploaded'
         CHECK (status IN ('uploaded', 'processing', 'transcribed', 'notes_generated', 'failed')),
+    course_id INTEGER DEFAULT NULL,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS transcripts (
