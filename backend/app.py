@@ -14,8 +14,12 @@ Those belong to other roles on the team. My responsibility is
 to build a clean backend API that connects everything together.
 """
 
+from pathlib import Path
+
 from flask import Flask
 from flask_cors import CORS
+
+from forum_ai_notetaker.db import init_db
 
 # Import route groups
 from routes.sessions import sessions_bp
@@ -37,9 +41,16 @@ def create_app():
     # can communicate with the backend server.
     CORS(app)
 
+    # Create tables if they don't exist yet.
+    init_db()
+
     # Configuration
-    # Uploaded recordings will be stored locally for now.
-    app.config["UPLOAD_FOLDER"] = "uploads"
+    # Resolve upload directory from backend root so it is stable
+    # regardless of the process working directory.
+    backend_root = Path(__file__).resolve().parent
+    upload_folder = backend_root / "uploads"
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    app.config["UPLOAD_FOLDER"] = str(upload_folder)
 
     # Register API route groups
     app.register_blueprint(sessions_bp, url_prefix="/api/sessions")

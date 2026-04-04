@@ -1,26 +1,23 @@
 """
 Session service layer.
 
-This module connects the route layer to the underlying database.
+This module connects session routes to the SQLite database.
 
-It provides a stable interface for creating and retrieving session
-records without exposing SQL logic to the rest of the application.
-
-A session represents one uploaded recording along with metadata
-used to track its lifecycle (uploaded → processing → completed).
+A session represents one uploaded recording plus the metadata
+used to track its processing state through the pipeline.
 """
 
 from typing import Optional
+
 from forum_ai_notetaker.db import get_connection
 
 
 def _row_to_dict(row) -> dict:
     """
-    Convert a SQLite row into a plain dictionary.
+    Convert a SQLite row object into a plain dictionary.
 
-    Keeping this small helper here avoids repeating `dict(row)`
-    throughout the service functions and keeps the return format
-    consistent across the module.
+    Keeping this helper here avoids repeating `dict(row)` across
+    the service layer and keeps the returned shape consistent.
     """
     return dict(row)
 
@@ -34,16 +31,12 @@ def create_session_record(
     """
     Create and store a new session record.
 
-    This function is called immediately after a file is uploaded.
-    It persists the session metadata so the system can track the
-    recording through the processing pipeline.
-
-    Note:
-    The session is currently stored without a course reference,
-    as the schema does not yet support linking sessions to courses.
+    This function is called after a recording has been uploaded
+    successfully. It persists the metadata needed for later
+    retrieval and pipeline status tracking.
 
     Returns:
-        A dictionary representing the created session.
+        A dictionary representing the newly created session.
     """
     with get_connection() as conn:
         cursor = conn.execute(
@@ -76,10 +69,10 @@ def create_session_record(
 
 def fetch_all_sessions() -> list[dict]:
     """
-    Retrieve all sessions from the database.
+    Return all sessions currently stored in the database.
 
-    Sessions are returned in reverse chronological order so the
-    most recent uploads appear first in the UI.
+    Sessions are ordered with the most recent first so the frontend
+    can display newly uploaded recordings at the top.
     """
     with get_connection() as conn:
         rows = conn.execute(
@@ -95,13 +88,10 @@ def fetch_all_sessions() -> list[dict]:
 
 def fetch_one_session(session_id: int) -> Optional[dict]:
     """
-    Retrieve a single session by its ID.
+    Return one session by ID.
 
     Returns:
         A session dictionary if found, otherwise None.
-
-    This allows routes to safely check for existence before
-    attempting to access session-related resources.
     """
     with get_connection() as conn:
         row = conn.execute(
@@ -120,11 +110,9 @@ def update_session_status(session_id: int, new_status: str) -> None:
     """
     Update the processing status of a session.
 
-    This is typically called by the pipeline as the recording
-    moves through different stages (e.g. uploaded → transcribed).
-
-    Keeping this logic in the service layer ensures that status
-    changes remain consistent across the system.
+    This is typically called by the pipeline as the recording moves
+    through different stages such as uploaded, processing,
+    transcribed, or notes_generated.
     """
     with get_connection() as conn:
         conn.execute(
