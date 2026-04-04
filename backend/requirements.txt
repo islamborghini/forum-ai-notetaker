@@ -1,3 +1,5 @@
 Flask
 Flask-Cors
 Werkzeug
+PyJWT
+python-dotenv
