@@ -13,8 +13,12 @@ the team. My responsibility here is to keep the backend API clean,
 organized, and easy to extend.
 """
 
+from pathlib import Path
+
 from flask import Flask
 from flask_cors import CORS
+
+from forum_ai_notetaker.db import init_db
 
 # Import route groups
 from routes.sessions import sessions_bp
@@ -39,6 +43,16 @@ def create_app():
 
     # Store uploaded recordings locally for now.
     app.config["UPLOAD_FOLDER"] = "uploads"
+    # Create tables if they don't exist yet.
+    init_db()
+
+    # Configuration
+    # Resolve upload directory from backend root so it is stable
+    # regardless of the process working directory.
+    backend_root = Path(__file__).resolve().parent
+    upload_folder = backend_root / "uploads"
+    upload_folder.mkdir(parents=True, exist_ok=True)
+    app.config["UPLOAD_FOLDER"] = str(upload_folder)
 
     # Register API route groups.
     app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
@@ -81,4 +95,11 @@ app = create_app()
 
 if __name__ == "__main__":
     # Run the development server with auto-reload enabled.
+    app.run(debug=True)
+    """
+    Run the development server.
+
+    Debug mode is enabled so the server automatically reloads
+    when code changes during development.
+    """
     app.run(debug=True)

@@ -1,27 +1,29 @@
 """
 Transcript service layer.
 
-Like the session service, this is a placeholder interface that
-keeps the backend routes stable even before full DB integration.
+Connects the backend API to the SQLite database.
 """
 
+from datetime import datetime, timezone
 from typing import Optional
 
-TRANSCRIPTS = {}
+from forum_ai_notetaker.db import get_connection
 
 
 def save_transcript(session_id: int, transcript_text: str) -> None:
-    """
-    Save transcript data for a session.
-    """
-    TRANSCRIPTS[session_id] = {
-        "session_id": session_id,
-        "text": transcript_text
-    }
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO transcripts (session_id, content, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?)",
+            (session_id, transcript_text, now, now),
+        )
+        conn.commit()
 
 
 def fetch_transcript_by_session_id(session_id: int) -> Optional[dict]:
-    """
-    Return transcript data for a session if it exists.
-    """
-    return TRANSCRIPTS.get(session_id)
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM transcripts WHERE session_id = ?", (session_id,)
+        ).fetchone()
+    return dict(row) if row else None
