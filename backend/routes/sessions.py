@@ -5,9 +5,10 @@ A session represents one uploaded course recording.
 This file handles the upload flow and session retrieval.
 """
 
-import os
 import uuid
 from flask import Blueprint, request, current_app, g
+from pathlib import Path
+from flask import Blueprint, request, current_app
 
 from middleware.auth import auth_required
 from utils.responses import success_response, error_response
@@ -96,12 +97,19 @@ def upload_session():
 
     unique_filename = f"{uuid.uuid4().hex}{file_ext}"
 
-    upload_folder = current_app.config["UPLOAD_FOLDER"]
-    os.makedirs(upload_folder, exist_ok=True)
+    upload_folder = Path(
+        current_app.config["UPLOAD_FOLDER"]
+    ).expanduser().resolve()
+    upload_folder.mkdir(parents=True, exist_ok=True)
 
-    file_path = os.path.join(upload_folder, unique_filename)
+    file_path = upload_folder / unique_filename
 
     file.save(file_path)
+    # Save the uploaded recording locally.
+    file.save(str(file_path))
+
+    # Keep stored path backend-relative for portability.
+    recording_path = str(Path("uploads") / unique_filename)
 
     session = create_session_record(
         title=title,
@@ -112,5 +120,13 @@ def upload_session():
     )
 
     trigger_pipeline(file_path, session["id"])
+        recording_path=recording_path,
+        status="uploaded"
+    )
+
+    # Trigger the processing flow.
+    # The internal pipeline is still not my responsibility,
+    # but the backend should still provide the entry point for it.
+    trigger_pipeline(recording_path, session["id"])
 
     return success_response("Recording uploaded successfully", session, 201)
