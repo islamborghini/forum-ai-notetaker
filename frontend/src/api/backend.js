@@ -1,9 +1,27 @@
 // Use an env override when needed; otherwise rely on Vite proxy (/api -> backend).
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
+function getToken() {
+  return localStorage.getItem("token");
+}
+
 async function request(path, options = {}) {
   // Central request helper so all endpoints share one error-handling pattern.
-  const response = await fetch(`${API_BASE}${path}`, options);
+  const headers = { ...options.headers };
+  const token = getToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  // If the server says 401, the token is bad or expired — clear it and let
+  // the caller handle the redirect (ProtectedRoute will kick to /login).
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    throw new Error("Session expired. Please log in again.");
+  }
+
   const rawText = await response.text();
   let payload = null;
 
@@ -23,6 +41,30 @@ async function request(path, options = {}) {
   return payload;
 }
 
+// --- Auth ---
+
+export function loginUser(email, password) {
+  return request("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function registerUser(name, email, password) {
+  return request("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, password }),
+  });
+}
+
+export function getMe() {
+  return request("/api/auth/me");
+}
+
+// --- Sessions ---
+
 export function getSessions() {
   return request("/api/sessions");
 }
@@ -39,9 +81,13 @@ export function uploadSession({ title, file }) {
   });
 }
 
+// --- Transcripts ---
+
 export function getTranscript(sessionId) {
   return request(`/api/transcripts/${sessionId}`);
 }
+
+// --- Notes ---
 
 export function getNotes(sessionId) {
   return request(`/api/notes/session/${sessionId}`);

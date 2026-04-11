@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-export default function Login() {
-  const { login } = useAuth();
+export default function Register() {
+  const { register } = useAuth();
   const navigate = useNavigate();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,21 +17,29 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
+    if (!name.trim()) {
+      setError("Name is required.");
+      return;
+    }
     if (!email.trim()) {
       setError("Email is required.");
       return;
     }
-    if (!password) {
-      setError("Password is required.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.");
       return;
     }
 
     setLoading(true);
     try {
-      await login(email.trim().toLowerCase(), password);
+      await register(name.trim(), email.trim().toLowerCase(), password);
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err.message || "Login failed.");
+      setError(err.message || "Registration failed.");
     } finally {
       setLoading(false);
     }
@@ -38,9 +48,22 @@ export default function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h1>Log in</h1>
+        <h1>Create account</h1>
 
         <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="form-field">
+            <label htmlFor="name">Name</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              disabled={loading}
+              autoComplete="name"
+            />
+          </div>
+
           <div className="form-field">
             <label htmlFor="email">Email</label>
             <input
@@ -61,21 +84,34 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
+              placeholder="At least 8 characters"
               disabled={loading}
-              autoComplete="current-password"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="confirm-password">Confirm password</label>
+            <input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Same password again"
+              disabled={loading}
+              autoComplete="new-password"
             />
           </div>
 
           {error ? <p className="error-text" role="alert">{error}</p> : null}
 
           <button type="submit" disabled={loading}>
-            {loading ? "Logging in..." : "Log in"}
+            {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
 
         <p className="auth-footer">
-          Don&apos;t have an account? <Link to="/register">Sign up</Link>
+          Already have an account? <Link to="/login">Log in</Link>
         </p>
       </div>
     </div>
