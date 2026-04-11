@@ -1,27 +1,17 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useState, useEffect, useCallback } from "react";
 import { loginUser, registerUser, getMe } from "../api/backend";
 
-const AuthContext = createContext(null);
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-  return ctx;
-}
+export const AuthContext = createContext(null);
 
 export default function AuthProvider({ children }) {
+  const hasToken = Boolean(localStorage.getItem("token"));
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasToken);
 
   useEffect(() => {
+    if (!hasToken) return;
+
     let cancelled = false;
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
 
     getMe()
       .then((payload) => {
@@ -37,7 +27,7 @@ export default function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasToken]);
 
   const login = useCallback(async (email, password) => {
     const payload = await loginUser(email, password);
