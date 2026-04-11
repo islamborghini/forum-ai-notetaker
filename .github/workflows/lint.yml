@@ -4,6 +4,16 @@ on:
   pull_request:
 
 jobs:
+  validate-pr-base:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require pull requests to target main
+        run: |
+          if [ "${{ github.base_ref }}" != "main" ]; then
+            echo "::error::Pull requests must target main. Current base is '${{ github.base_ref }}'."
+            exit 1
+          fi
+
   frontend-lint:
     runs-on: ubuntu-latest
     defaults:
