@@ -17,8 +17,6 @@ to build a clean backend API that connects everything together.
 from pathlib import Path
 
 from dotenv import load_dotenv
-load_dotenv()
-
 from flask import Flask
 from flask_cors import CORS
 
@@ -29,6 +27,9 @@ from routes.sessions import sessions_bp
 from routes.transcripts import transcripts_bp
 from routes.notes import notes_bp
 from routes.auth import auth_bp
+from routes.courses import courses_bp
+
+load_dotenv()
 
 
 def create_app():
@@ -61,6 +62,7 @@ def create_app():
     app.register_blueprint(transcripts_bp, url_prefix="/api/transcripts")
     app.register_blueprint(notes_bp, url_prefix="/api/notes")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(courses_bp, url_prefix="/api/courses")
 
     @app.route("/", methods=["GET"])
     def home():
