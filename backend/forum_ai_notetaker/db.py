@@ -10,6 +10,24 @@ DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "forum_ai_notetaker.sqlite3"
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
+def _column_exists(connection: sqlite3.Connection, table_name: str, column_name: str) -> bool:
+    rows = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return any(row[1] == column_name for row in rows)
+
+
+def _run_migrations(connection: sqlite3.Connection) -> None:
+    if not _column_exists(connection, "sessions", "course_id"):
+        connection.execute(
+            "ALTER TABLE sessions "
+            "ADD COLUMN course_id INTEGER DEFAULT NULL "
+            "REFERENCES courses(id) ON DELETE SET NULL"
+        )
+
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_sessions_course_id ON sessions(course_id)"
+    )
+
+
 def resolve_db_path(db_path: str | Path | None = None) -> Path:
     path = Path(db_path) if db_path is not None else DEFAULT_DB_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -22,6 +40,7 @@ def init_db(db_path: str | Path | None = None) -> Path:
     with sqlite3.connect(path) as connection:
         connection.execute("PRAGMA foreign_keys = ON;")
         connection.executescript(schema)
+        _run_migrations(connection)
     return path
 
 
