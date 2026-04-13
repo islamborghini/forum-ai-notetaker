@@ -10,6 +10,32 @@ import os
 from groq import Groq
 
 
+def _validate_notes_payload(payload: dict) -> dict:
+    """
+    Validate the generated notes payload before saving it.
+    """
+    summary = payload.get("summary")
+    topics = payload.get("topics")
+    action_items = payload.get("action_items")
+
+    if not isinstance(summary, str):
+        raise RuntimeError("Groq response must include a string summary")
+
+    if not isinstance(topics, list) or not all(isinstance(item, str) for item in topics):
+        raise RuntimeError("Groq response topics must be a list of strings")
+
+    if not isinstance(action_items, list) or not all(
+        isinstance(item, str) for item in action_items
+    ):
+        raise RuntimeError("Groq response action_items must be a list of strings")
+
+    return {
+        "summary": summary,
+        "topics": topics,
+        "action_items": action_items,
+    }
+
+
 def generate_notes_from_transcript(transcript_text: str) -> dict:
     """
     Generate structured notes from a transcript using Groq.
@@ -46,4 +72,5 @@ def generate_notes_from_transcript(transcript_text: str) -> dict:
     )
 
     content = response.choices[0].message.content
-    return json.loads(content)
+    payload = json.loads(content)
+    return _validate_notes_payload(payload)
