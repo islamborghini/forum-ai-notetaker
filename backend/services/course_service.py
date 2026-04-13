@@ -31,7 +31,7 @@ def _generate_unique_invite_code() -> str:
             return invite_code
 
 
-def create_course(name: str, creator: dict) -> dict:
+def create_course(name: str, creator_user_id: int) -> dict:
     """
     Create a course and add the creator as an instructor.
     """
@@ -53,7 +53,7 @@ def create_course(name: str, creator: dict) -> dict:
         ).fetchone()
 
     course = _row_to_dict(row)
-    create_course_member(course["id"], creator["id"], "instructor")
+    create_course_member(course["id"], creator_user_id, "instructor")
     return course
 
 

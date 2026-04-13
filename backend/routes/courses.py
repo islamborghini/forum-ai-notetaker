@@ -30,59 +30,33 @@ courses_bp = Blueprint("courses", __name__)
 
 
 @courses_bp.route("/", methods=["POST"])
+@auth_required
 def create_new_course():
     """
     Create a course.
 
-    For now, this route expects the creator information to be provided
-    in the request body so the course flow can be developed without
-    depending on the separate auth middleware PR.
-
     Expected JSON:
     {
-        "name": "...",
-        "creator": {
-            "id": 1,
-            "name": "...",
-            "email": "..."
-        }
+        "name": "..."
     }
     """
     data = request.get_json(silent=True) or {}
     name = data.get("name", "").strip()
-    creator = data.get("creator")
 
     if not name:
         return error_response("Course name is required", 400)
 
-    if not creator or "id" not in creator:
-        return error_response("creator with id is required", 400)
-
-    course = create_course(name, creator)
+    course = create_course(name, g.user["id"])
     return success_response("Course created", course, 201)
 
 
 @courses_bp.route("/", methods=["GET"])
+@auth_required
 def list_my_courses():
     """
-    Get all courses for a given user.
-
-    Since auth middleware is not part of this flow yet, the user is supplied
-    through a query parameter for now:
-
-        GET /api/courses?user_id=1
+    Get all courses for the authenticated user.
     """
-    user_id_raw = request.args.get("user_id", "").strip()
-
-    if not user_id_raw:
-        return error_response("user_id is required", 400)
-
-    try:
-        user_id = int(user_id_raw)
-    except ValueError:
-        return error_response("user_id must be int", 400)
-
-    courses = get_courses_for_user(user_id)
+    courses = get_courses_for_user(g.user["id"])
     return success_response("Courses retrieved", courses)
 
 
@@ -117,32 +91,19 @@ def join_course():
 
 
 @courses_bp.route("/<int:course_id>", methods=["GET"])
+@auth_required
 def get_course_details(course_id: int):
     """
     Get course info and members.
 
-    Access is checked using a user_id query parameter for now:
-
-        GET /api/courses/<course_id>?user_id=1
-
     Invite code is only returned if that user is the instructor.
     """
-    user_id_raw = request.args.get("user_id", "").strip()
-
-    if not user_id_raw:
-        return error_response("user_id is required", 400)
-
-    try:
-        user_id = int(user_id_raw)
-    except ValueError:
-        return error_response("user_id must be int", 400)
-
     course = get_course_by_id(course_id)
 
     if not course:
         return error_response("Course not found", 404)
 
-    if not is_course_member(course_id, user_id):
+    if not is_course_member(course_id, g.user["id"]):
         return error_response("Access denied", 403)
 
     data = {
@@ -151,43 +112,35 @@ def get_course_details(course_id: int):
         "members": get_course_members(course_id),
     }
 
-    if is_instructor(course_id, user_id):
+    if is_instructor(course_id, g.user["id"]):
         data["invite_code"] = course["invite_code"]
 
     return success_response("Course retrieved", data)
 
 
 @courses_bp.route("/<int:course_id>/promote-ta", methods=["POST"])
+@auth_required
 def promote_to_ta(course_id: int):
     """
     Promote a student to TA.
 
-    Since auth middleware is not part of this flow yet, the acting instructor
-    is identified through `actor_user_id` in the request body.
-
     Expected JSON:
     {
-        "actor_user_id": 1,
         "user_id": 2
     }
     """
     data = request.get_json(silent=True) or {}
-    actor_user_id = data.get("actor_user_id")
     user_id = data.get("user_id")
-
-    if actor_user_id is None:
-        return error_response("actor_user_id required", 400)
 
     if user_id is None:
         return error_response("user_id required", 400)
 
     try:
-        actor_user_id = int(actor_user_id)
         user_id = int(user_id)
     except ValueError:
-        return error_response("actor_user_id and user_id must be int", 400)
+        return error_response("user_id must be int", 400)
 
-    if not is_instructor(course_id, actor_user_id):
+    if not is_instructor(course_id, g.user["id"]):
         return error_response("Only instructors can promote", 403)
 
     membership = get_course_member(course_id, user_id)
