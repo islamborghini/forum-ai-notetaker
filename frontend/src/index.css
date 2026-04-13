@@ -26,3 +26,103 @@ nav a:hover {
   margin: auto;
   padding: 32px;
 }
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+}
+
+.stat-card span {
+  display: block;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.stat-card strong {
+  font-size: 24px;
+}
+
+.dashboard-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 12px;
+  margin: 12px 0 18px;
+}
+
+.dashboard-toolbar input,
+.dashboard-toolbar select,
+.upload-form input,
+.upload-form button {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.session-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.session-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-form {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+.upload-dropzone {
+  border: 1px dashed #94a3b8;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.upload-dropzone.drag-over {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.muted-text {
+  color: #64748b;
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+
+.success-text {
+  margin-top: 12px;
+  color: #15803d;
+}
+
+.error-text {
+  margin-top: 12px;
+  color: #b91c1c;
+}

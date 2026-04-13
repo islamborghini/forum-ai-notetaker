@@ -34,8 +34,8 @@ def extract_audio(video_path: str) -> str:
     if not video_file.is_file():
         raise FileNotFoundError(f"Path is not a file: {video_file}")
 
-    # Save output in backend/uploads/audio to keep location predictable.
-    output_dir = Path("backend/uploads/audio").resolve()
+    # Save output in uploads/audio relative to this file's location.
+    output_dir = Path(__file__).resolve().parent.parent / "uploads" / "audio"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     output_audio = output_dir / f"{video_file.stem}.wav"
