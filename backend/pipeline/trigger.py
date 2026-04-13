@@ -10,7 +10,10 @@ from pathlib import Path
 
 from pipeline.audio import extract_audio
 from pipeline.transcribe import transcribe_audio
-from services.groq_service import generate_notes_from_transcript
+from services.groq_service import (
+    generate_fallback_notes,
+    generate_notes_from_transcript,
+)
 from services.note_service import save_notes
 from services.session_service import update_session_status
 from services.transcript_service import save_transcript
@@ -41,7 +44,16 @@ def trigger_pipeline(file_path: str, session_id: int) -> None:
         audio_path = extract_audio(absolute_recording_path)
         transcript_text = transcribe_audio(audio_path)
         save_transcript(session_id, transcript_text)
-        notes = generate_notes_from_transcript(transcript_text)
+
+        try:
+            notes = generate_notes_from_transcript(transcript_text)
+        except Exception as exc:
+            print(
+                f"Groq note generation failed for session {session_id}: {exc}. "
+                "Using fallback summary generation."
+            )
+            notes = generate_fallback_notes(transcript_text)
+
         save_notes(
             session_id,
             notes["summary"],
