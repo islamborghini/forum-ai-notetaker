@@ -7,7 +7,10 @@ Handles note generation from a transcript using the Groq API.
 import json
 import os
 
+from dotenv import load_dotenv
 from groq import Groq
+
+load_dotenv()
 
 
 def _validate_notes_payload(payload: dict) -> dict:
