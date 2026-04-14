@@ -12,7 +12,10 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from forum_ai_notetaker.db import get_connection
-from services.course_member_service import get_course_member
+from services.course_member_service import (
+    create_course_member,
+    get_course_member,
+)
 
 
 def _row_to_dict(row) -> dict:
