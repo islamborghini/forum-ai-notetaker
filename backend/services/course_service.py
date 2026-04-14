@@ -94,7 +94,7 @@ def get_courses_for_user(user_id: int) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT c.*, cm.role
+            SELECT c.id, c.name, c.created_at, c.updated_at, cm.role
             FROM courses c
             INNER JOIN course_members cm ON cm.course_id = c.id
             WHERE cm.user_id = ?
