@@ -6,6 +6,7 @@ Extracts audio with FFmpeg, transcribes with Whisper,
 generates notes with Groq, and saves the results.
 """
 
+import logging
 from pathlib import Path
 
 from pipeline.audio import extract_audio
@@ -17,6 +18,8 @@ from services.groq_service import (
 from services.note_service import save_notes
 from services.session_service import update_session_status
 from services.transcript_service import save_transcript
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_recording_path(file_path: str) -> str:
@@ -47,10 +50,11 @@ def trigger_pipeline(file_path: str, session_id: int) -> None:
 
         try:
             notes = generate_notes_from_transcript(transcript_text)
-        except Exception as exc:
-            print(
-                f"Groq note generation failed for session {session_id}: {exc}. "
-                "Using fallback summary generation."
+        except Exception:
+            logger.exception(
+                "Groq note generation failed for session %s. "
+                "Using fallback summary generation.",
+                session_id,
             )
             notes = generate_fallback_notes(transcript_text)
 
@@ -61,6 +65,6 @@ def trigger_pipeline(file_path: str, session_id: int) -> None:
             notes["action_items"],
         )
         update_session_status(session_id, "notes_generated")
-    except Exception as exc:
-        print(f"Pipeline failed for session {session_id}: {exc}")
+    except Exception:
+        logger.exception("Pipeline failed for session %s", session_id)
         update_session_status(session_id, "failed")

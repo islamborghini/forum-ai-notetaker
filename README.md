@@ -99,5 +99,5 @@ If you see errors like `SSLCertVerificationError` while Whisper downloads `base.
 
 2. Retry:
    ```bash
-   python -c "import whisper; whisper.load_model('base.en'); print('whisper ok')"
+   python -c "import logging, whisper; logging.basicConfig(level=logging.INFO); whisper.load_model('base.en'); logging.info('whisper ok')"
    ```
