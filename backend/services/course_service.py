@@ -1,129 +1,170 @@
 """
-Course service.
+Course service layer.
 
-Handles:
-- creating courses
-- invite codes
-- membership
-- role checks (student / TA / professor)
-
-Currently uses in-memory storage so routes can be tested
-before DB integration.
+Provides data access helpers for courses and course membership views.
 """
+
+from __future__ import annotations
 
 import random
 import string
+from datetime import datetime, timezone
 from typing import Optional
 
-COURSES = []
-COURSE_MEMBERS = []
-NEXT_COURSE_ID = 1
+from forum_ai_notetaker.db import get_connection
+from services.course_member_service import (
+    create_course_member,
+    get_course_member,
+)
 
 
-def generate_invite_code(length: int = 6) -> str:
-    """
-    Generate a short invite code (e.g. AB12CD).
-    """
+def _row_to_dict(row) -> dict:
+    return dict(row)
+
+
+def _generate_invite_code(length: int = 6) -> str:
     alphabet = string.ascii_uppercase + string.digits
     return "".join(random.choices(alphabet, k=length))
 
 
-def create_course(name: str, creator: dict) -> dict:
+def _generate_unique_invite_code() -> str:
+    while True:
+        invite_code = _generate_invite_code()
+        if not get_course_by_invite_code(invite_code):
+            return invite_code
+
+
+def create_course(name: str, creator_user_id: int) -> dict:
     """
-    Create a course and assign creator as professor.
+    Create a course and add the creator as an instructor.
     """
-    global NEXT_COURSE_ID
+    now = datetime.now(timezone.utc).isoformat()
+    invite_code = _generate_unique_invite_code()
 
-    course = {
-        "id": NEXT_COURSE_ID,
-        "name": name,
-        "invite_code": generate_invite_code(),
-        "creator_id": creator["id"],
-    }
+    with get_connection() as conn:
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO courses (name, invite_code, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (name, invite_code, now, now),
+            )
+            course_id = cursor.lastrowid
 
-    COURSES.append(course)
+            conn.execute(
+                """
+                INSERT INTO course_members (course_id, user_id, role, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (course_id, creator_user_id, "instructor", now, now),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
-    COURSE_MEMBERS.append({
-        "course_id": NEXT_COURSE_ID,
-        "user_id": creator["id"],
-        "role": "professor",
-    })
+        row = conn.execute(
+            "SELECT * FROM courses WHERE id = ?",
+            (course_id,),
+        ).fetchone()
 
-    NEXT_COURSE_ID += 1
-    return course
+    return _row_to_dict(row)
 
 
 def get_course_by_id(course_id: int) -> Optional[dict]:
-    return next((c for c in COURSES if c["id"] == course_id), None)
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM courses WHERE id = ?",
+            (course_id,),
+        ).fetchone()
+    return _row_to_dict(row) if row else None
 
 
 def get_course_by_invite_code(invite_code: str) -> Optional[dict]:
-    return next((c for c in COURSES if c["invite_code"] == invite_code), None)
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM courses WHERE invite_code = ?",
+            (invite_code,),
+        ).fetchone()
+    return _row_to_dict(row) if row else None
 
 
 def get_courses_for_user(user_id: int) -> list[dict]:
-    course_ids = {
-        m["course_id"]
-        for m in COURSE_MEMBERS
-        if m["user_id"] == user_id
-    }
-    return [c for c in COURSES if c["id"] in course_ids]
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT c.id, c.name, c.created_at, c.updated_at, cm.role
+            FROM courses c
+            INNER JOIN course_members cm ON cm.course_id = c.id
+            WHERE cm.user_id = ?
+            ORDER BY c.created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
 
 
 def get_course_members(course_id: int) -> list[dict]:
-    return [m for m in COURSE_MEMBERS if m["course_id"] == course_id]
-
-
-def get_membership(course_id: int, user_id: int) -> Optional[dict]:
-    return next(
-        (m for m in COURSE_MEMBERS if m["course_id"] == course_id and m["user_id"] == user_id),
-        None,
-    )
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                cm.id,
+                cm.course_id,
+                cm.user_id,
+                cm.role,
+                cm.created_at,
+                cm.updated_at,
+                u.name,
+                u.email
+            FROM course_members cm
+            INNER JOIN users u ON u.id = cm.user_id
+            WHERE cm.course_id = ?
+            ORDER BY
+                CASE cm.role
+                    WHEN 'instructor' THEN 0
+                    WHEN 'ta' THEN 1
+                    ELSE 2
+                END,
+                u.name ASC
+            """,
+            (course_id,),
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
 
 
 def is_course_member(course_id: int, user_id: int) -> bool:
-    return get_membership(course_id, user_id) is not None
+    return get_course_member(course_id, user_id) is not None
 
 
-def is_professor(course_id: int, user_id: int) -> bool:
-    m = get_membership(course_id, user_id)
-    return m is not None and m["role"] == "professor"
+def is_instructor(course_id: int, user_id: int) -> bool:
+    member = get_course_member(course_id, user_id)
+    return member is not None and member.get("role") == "instructor"
 
 
-def is_ta_or_professor(course_id: int, user_id: int) -> bool:
-    m = get_membership(course_id, user_id)
-    return m is not None and m["role"] in {"ta", "professor"}
-
-
-def join_course_by_invite_code(invite_code: str, user: dict):
+def join_course_by_invite_code(invite_code: str, user: dict) -> Optional[dict]:
     """
     Join a course as a student.
+
+    Returns:
+        dict on success,
+        None if the course is not found,
+        {"error": "already_member"} if the user is already enrolled.
     """
     course = get_course_by_invite_code(invite_code)
     if not course:
         return None
 
-    existing = get_membership(course["id"], user["id"])
-    if existing:
-        return existing
+    existing_member = get_course_member(course["id"], user["id"])
+    if existing_member:
+        return {"error": "already_member"}
 
-    membership = {
-        "course_id": course["id"],
-        "user_id": user["id"],
-        "role": "student",
+    membership = create_course_member(course["id"], user["id"], "student")
+    if not membership:
+        return {"error": "already_member"}
+
+    return {
+        "course": course,
+        "membership": membership,
     }
-
-    COURSE_MEMBERS.append(membership)
-    return membership
-
-
-def promote_member_to_ta(course_id: int, user_id: int):
-    """
-    Promote student → TA.
-    """
-    m = get_membership(course_id, user_id)
-    if not m:
-        return None
-
-    m["role"] = "ta"
-    return m

@@ -19,10 +19,9 @@ from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 
-from forum_ai_notetaker.db import init_db
-
-# Load environment variables before routes/services that may depend on them.
 load_dotenv()
+
+from forum_ai_notetaker.db import init_db
 
 # Import route groups
 from routes.sessions import sessions_bp
