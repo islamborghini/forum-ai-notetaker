@@ -143,6 +143,23 @@ def is_instructor(course_id: int, user_id: int) -> bool:
     return member is not None and member.get("role") == "instructor"
 
 
+def is_ta_or_professor(course_id: int, user_id: int) -> bool:
+    member = get_course_member(course_id, user_id)
+    if not member:
+        return False
+    return member.get("role") in ("instructor", "ta")
+
+
+def get_course_sessions(course_id: int) -> list[dict]:
+    """Return all sessions belonging to a course."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM sessions WHERE course_id = ? ORDER BY created_at DESC",
+            (course_id,),
+        ).fetchall()
+    return [_row_to_dict(row) for row in rows]
+
+
 def join_course_by_invite_code(invite_code: str, user: dict) -> Optional[dict]:
     """
     Join a course as a student.

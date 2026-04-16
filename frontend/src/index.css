@@ -226,6 +226,181 @@ button:disabled {
   text-decoration: underline;
 }
 
+/* --- Course grid --- */
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 12px 0 24px;
+}
+
+.course-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.course-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+.course-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.course-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Role badges --- */
+
+.role-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  text-transform: capitalize;
+}
+
+.role-badge--instructor {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.role-badge--ta {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.role-badge--student {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* --- Course page --- */
+
+.course-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.course-header h1 {
+  margin: 0;
+}
+
+.course-invite-section {
+  margin: 12px 0 24px;
+  max-width: 320px;
+}
+
+.section-heading {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 24px 0 8px;
+}
+
+/* --- Member list --- */
+
+.member-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.member-row {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.member-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.member-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* --- Empty state --- */
+
+.empty-state {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  margin: 12px 0 24px;
+}
+
+.empty-state p {
+  color: #64748b;
+  margin: 0 0 16px;
+}
+
+.empty-state-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.empty-state-actions a {
+  text-decoration: none;
+}
+
+.btn-link {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  background: #1d4ed8;
+}
+
+.btn-link--secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #cbd5e1;
+}
+
+.btn-link--secondary:hover {
+  background: #f1f5f9;
+}
+
 /* --- Dashboard --- */
 
 .dashboard-header {

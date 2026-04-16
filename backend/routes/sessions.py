@@ -21,40 +21,39 @@ from utils.responses import success_response, error_response
 from utils.validators import allowed_file, safe_filename
 from services.session_service import (
     create_session_record,
-    fetch_all_sessions,
+    fetch_sessions_for_user,
     fetch_one_session,
 )
-from services.course_service import get_course_by_id, is_ta_or_professor
+from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
 from pipeline.trigger import trigger_pipeline
 
 sessions_bp = Blueprint("sessions", __name__)
 
 
 @sessions_bp.route("/", methods=["GET"])
+@auth_required
 def get_sessions():
     """
-    Return all sessions currently stored in the system.
-
-    This is mainly used by the frontend dashboard to display
-    uploaded recordings and their processing status.
+    Return sessions for the authenticated user's courses.
     """
-    sessions = fetch_all_sessions()
+    sessions = fetch_sessions_for_user(g.user["id"])
     return success_response("Sessions retrieved successfully", sessions)
 
 
 @sessions_bp.route("/<int:session_id>", methods=["GET"])
+@auth_required
 def get_session(session_id: int):
     """
-    Return a single session by ID.
-
-    This allows the frontend to fetch detailed information
-    about a specific recording, including its status in
-    the processing pipeline.
+    Return a single session by ID. Verifies course membership.
     """
     session = fetch_one_session(session_id)
 
     if not session:
         return error_response("Session not found", 404)
+
+    if session.get("course_id"):
+        if not is_course_member(session["course_id"], g.user["id"]):
+            return error_response("You are not a member of this course", 403)
 
     return success_response("Session retrieved successfully", session)
 
@@ -136,6 +135,7 @@ def upload_session():
         original_filename=original_filename,
         stored_path=stored_path,
         status="uploaded",
+        course_id=course_id,
     )
 
     trigger_pipeline(stored_path, session["id"])

@@ -27,6 +27,7 @@ def create_session_record(
     original_filename: str,
     stored_path: str,
     status: str,
+    course_id: Optional[int] = None,
 ) -> dict:
     """
     Create and store a new session record.
@@ -46,21 +47,18 @@ def create_session_record(
                 original_filename,
                 stored_path,
                 status,
+                course_id,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+            VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             """,
-            (title, original_filename, stored_path, status),
+            (title, original_filename, stored_path, status, course_id),
         )
         conn.commit()
 
         row = conn.execute(
-            """
-            SELECT id, title, original_filename, stored_path, status, created_at, updated_at
-            FROM sessions
-            WHERE id = ?
-            """,
+            "SELECT * FROM sessions WHERE id = ?",
             (cursor.lastrowid,),
         ).fetchone()
 
@@ -86,6 +84,26 @@ def fetch_all_sessions() -> list[dict]:
     return [_row_to_dict(row) for row in rows]
 
 
+def fetch_sessions_for_user(user_id: int) -> list[dict]:
+    """
+    Return sessions belonging to courses the user is a member of.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT s.id, s.title, s.original_filename, s.stored_path,
+                   s.status, s.course_id, s.created_at, s.updated_at
+            FROM sessions s
+            JOIN course_members cm ON cm.course_id = s.course_id
+            WHERE cm.user_id = ?
+            ORDER BY s.created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+
+    return [_row_to_dict(row) for row in rows]
+
+
 def fetch_one_session(session_id: int) -> Optional[dict]:
     """
     Return one session by ID.
@@ -96,7 +114,7 @@ def fetch_one_session(session_id: int) -> Optional[dict]:
     with get_connection() as conn:
         row = conn.execute(
             """
-            SELECT id, title, original_filename, stored_path, status, created_at, updated_at
+            SELECT id, title, original_filename, stored_path, status, course_id, created_at, updated_at
             FROM sessions
             WHERE id = ?
             """,

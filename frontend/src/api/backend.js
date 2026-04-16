@@ -90,6 +90,18 @@ export function getCourse(courseId) {
   return request(`/api/courses/${courseId}`);
 }
 
+export function getCourseSessions(courseId) {
+  return request(`/api/courses/${courseId}/sessions`);
+}
+
+export function updateMemberRole(courseId, userId, role) {
+  return request(`/api/courses/${courseId}/members/${userId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+}
+
 // --- Sessions ---
 
 export function getSessions() {

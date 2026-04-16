@@ -17,6 +17,7 @@ from services.course_service import (
     create_course,
     get_course_by_id,
     get_course_members,
+    get_course_sessions,
     get_courses_for_user,
     is_course_member,
     is_instructor,
@@ -103,19 +104,32 @@ def get_course_details(course_id: int):
     if not course:
         return error_response("Course not found", 404)
 
-    if not is_course_member(course_id, g.user["id"]):
+    member = get_course_member(course_id, g.user["id"])
+    if not member:
         return error_response("Access denied", 403)
 
     data = {
         "id": course["id"],
         "name": course["name"],
         "members": get_course_members(course_id),
+        "your_role": member["role"],
     }
 
-    if is_instructor(course_id, g.user["id"]):
+    if member["role"] == "instructor":
         data["invite_code"] = course["invite_code"]
 
     return success_response("Course retrieved", data)
+
+
+@courses_bp.route("/<int:course_id>/sessions", methods=["GET"])
+@auth_required
+def course_sessions(course_id: int):
+    """List all sessions within a course. Only accessible to members."""
+    if not is_course_member(course_id, g.user["id"]):
+        return error_response("You are not a member of this course", 403)
+
+    sessions = get_course_sessions(course_id)
+    return success_response("Sessions retrieved", sessions)
 
 
 @courses_bp.route("/<int:course_id>/members/<int:user_id>", methods=["PATCH"])

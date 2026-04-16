@@ -6,6 +6,7 @@ import Notes from "./pages/Notes";
 import Search from "./pages/Search";
 import CreateCourse from "./pages/CreateCourse";
 import JoinCourse from "./pages/JoinCourse";
+import Course from "./pages/Course";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -68,6 +69,14 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <JoinCourse />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/courses/:id"
+        element={
+          <ProtectedRoute>
+            <Course />
           </ProtectedRoute>
         }
       />
