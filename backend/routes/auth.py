@@ -1,20 +1,25 @@
 """
 Authentication routes.
 
-Handles user registration, login, and token-based identity lookup.
+This module handles user registration, login, and token-based identity
+lookup.
+
+These routes form the public authentication API of the backend:
+- /register creates a new user account
+- /login verifies credentials and issues a JWT
+- /me returns the authenticated user's identity using shared auth middleware
 """
 
 import re
 import sqlite3
 
-from flask import Blueprint, request
+from flask import Blueprint, request, g
 from werkzeug.security import generate_password_hash, check_password_hash
 
-import jwt
-
+from middleware.auth import auth_required
 from utils.responses import success_response, error_response
-from utils.auth import generate_token, verify_token
-from services.user_service import create_user, get_user_by_email, get_user_by_id
+from utils.auth import generate_token
+from services.user_service import create_user, get_user_by_email
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -26,7 +31,18 @@ MAX_NAME_LENGTH = 100
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    """Register a new user and return a JWT."""
+    """
+    Register a new user and return an authentication token.
+
+    This route validates the request body, hashes the submitted password,
+    creates the user record, and immediately returns a JWT so the user
+    can begin authenticated requests without a separate login step.
+
+    Returns:
+        A success response containing the JWT and user record,
+        or an error response if validation fails or the email
+        is already registered.
+    """
     data = request.get_json(silent=True)
     if not data:
         return error_response("Request body must be JSON", 400)
@@ -55,15 +71,29 @@ def register():
 
     token = generate_token(user["id"], user["email"])
 
-    return success_response("User registered successfully", {
-        "token": token,
-        "user": user,
-    }, 201)
+    return success_response(
+        "User registered successfully",
+        {
+            "token": token,
+            "user": user,
+        },
+        201,
+    )
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """Authenticate a user and return a JWT."""
+    """
+    Authenticate a user and return a JWT.
+
+    This route verifies the submitted credentials against the stored
+    user record. If authentication succeeds, it returns a new token
+    along with a safe user object that excludes the password hash.
+
+    Returns:
+        A success response containing the JWT and user record,
+        or an error response if the credentials are invalid.
+    """
     data = request.get_json(silent=True)
     if not data:
         return error_response("Request body must be JSON", 400)
@@ -80,33 +110,31 @@ def login():
 
     token = generate_token(user["id"], user["email"])
 
-    safe_user = {k: v for k, v in user.items() if k != "password_hash"}
+    safe_user = {key: value for key, value in user.items() if key != "password_hash"}
 
-    return success_response("Login successful", {
-        "token": token,
-        "user": safe_user,
-    })
+    return success_response(
+        "Login successful",
+        {
+            "token": token,
+            "user": safe_user,
+        },
+    )
 
 
 @auth_bp.route("/me", methods=["GET"])
+@auth_required
 def me():
-    """Return the current user's info from the JWT in the Authorization header."""
-    auth_header = request.headers.get("Authorization", "")
+    """
+    Return the current authenticated user's identity.
 
-    if not auth_header.startswith("Bearer "):
-        return error_response("Missing or malformed Authorization header", 401)
+    This route relies on the authentication middleware to:
+    - validate the JWT
+    - attach the authenticated user to `g.user`
 
-    token = auth_header.split(" ", 1)[1]
+    This keeps authentication behavior consistent across all protected
+    routes and avoids duplicating token-parsing logic here.
 
-    try:
-        payload = verify_token(token)
-    except jwt.ExpiredSignatureError:
-        return error_response("Token has expired", 401)
-    except jwt.InvalidTokenError:
-        return error_response("Invalid token", 401)
-
-    user = get_user_by_id(payload["user_id"])
-    if not user:
-        return error_response("User not found", 401)
-
-    return success_response("User retrieved successfully", user)
+    Returns:
+        A success response containing the authenticated user's data.
+    """
+    return success_response("User retrieved successfully", g.user)
