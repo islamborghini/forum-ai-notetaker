@@ -3,13 +3,14 @@ Session routes.
 
 A session represents one uploaded course recording.
 
-This file defines the entry points for:
-- retrieving uploaded recordings
-- handling the upload workflow
+This module defines endpoints for:
+- listing sessions visible to the authenticated user
+- retrieving a specific session by ID
+- uploading a new recording and triggering processing
 
-The upload route is where authentication and permission checks
-are enforced before a recording enters the system. It acts as the
-gateway between the frontend and the backend processing pipeline.
+Because sessions are course-scoped resources, access checks are
+performed before session data is returned. This ensures that users
+only see sessions belonging to courses they are enrolled in.
 """
 
 import uuid
@@ -34,7 +35,10 @@ sessions_bp = Blueprint("sessions", __name__)
 @auth_required
 def get_sessions():
     """
-    Return sessions for the authenticated user's courses.
+    Return all sessions visible to the authenticated user.
+
+    Instead of exposing every session in the system, this route limits
+    results to sessions belonging to courses the user is a member of.
     """
     sessions = fetch_sessions_for_user(g.user["id"])
     return success_response("Sessions retrieved successfully", sessions)
@@ -44,7 +48,11 @@ def get_sessions():
 @auth_required
 def get_session(session_id: int):
     """
-    Return a single session by ID. Verifies course membership.
+    Return one session by ID if the user is authorized to view it.
+
+    The route first confirms that the session exists, then checks
+    whether the authenticated user belongs to the course associated
+    with that session.
     """
     session = fetch_one_session(session_id)
 
@@ -62,24 +70,16 @@ def get_session(session_id: int):
 @auth_required
 def upload_session():
     """
-    Upload a recording and trigger processing.
+    Upload a recording and trigger the processing pipeline.
 
-    This route is responsible for validating the request,
-    enforcing permissions, storing the file, and initiating
-    the pipeline.
+    This route performs four main steps:
+    1. validates the incoming request
+    2. checks that the user has upload permission for the course
+    3. stores the uploaded recording with a unique filename
+    4. creates a session record and starts processing
 
-    Requirements:
-    - the user must be authenticated
-    - a course_id must be provided in the request
-    - the user must be a TA or professor for that course
-
-    Important:
-    The current database schema does not yet link sessions to courses.
-    Because of this, course_id is used only for permission validation
-    at upload time and is not persisted with the session.
-
-    This keeps the permission logic in place without introducing
-    inconsistencies with the existing data model.
+    Uploads are restricted to instructional roles, meaning the user
+    must be a TA or professor in the target course.
     """
 
     if "file" not in request.files:

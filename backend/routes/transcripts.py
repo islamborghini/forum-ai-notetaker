@@ -1,12 +1,9 @@
 """
 Transcript routes.
 
-These routes return transcript data for a session.
-
-A transcript is course-related learning content, so this route should
-eventually follow the same access-control model as notes and sessions.
-For now, it returns transcript state safely so the frontend can render
-either the transcript itself or an empty/loading state.
+These endpoints return transcript data for a session.
+Transcripts are course-scoped resources, so access is restricted to
+users who belong to the course associated with the session.
 """
 
 from flask import Blueprint, g
@@ -24,10 +21,12 @@ transcripts_bp = Blueprint("transcripts", __name__)
 @auth_required
 def get_transcript(session_id: int):
     """
-    Return the transcript for a single session.
+    Return the transcript for a session if the user is authorized.
 
-    Requires authentication and course membership for
-    course-linked sessions.
+    Returns 404 if the session does not exist.
+    Returns 403 if the user is not a member of the session's course.
+    Returns 200 with data: null if transcription is not yet complete.
+    Returns 200 with the transcript object once available.
     """
     session = fetch_one_session(session_id)
     if not session:
@@ -35,10 +34,9 @@ def get_transcript(session_id: int):
 
     if session.get("course_id"):
         if not is_course_member(session["course_id"], g.user["id"]):
-            return error_response("You are not a member of this course", 403)
+            return error_response("You do not have access to this transcript", 403)
 
     transcript = fetch_transcript_by_session_id(session_id)
-
     if not transcript:
         return success_response("Transcript not ready yet", None)
 
