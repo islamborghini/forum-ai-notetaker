@@ -23,6 +23,7 @@ from services.session_service import (
     create_session_record,
     fetch_sessions_for_user,
     fetch_one_session,
+    search_sessions_for_user,
 )
 from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
 from pipeline.trigger import trigger_pipeline
@@ -38,6 +39,21 @@ def get_sessions():
     """
     sessions = fetch_sessions_for_user(g.user["id"])
     return success_response("Sessions retrieved successfully", sessions)
+
+
+@sessions_bp.route("/search", methods=["GET"])
+@auth_required
+def search_sessions():
+    """
+    Search sessions for the authenticated user's courses.
+    """
+    query = request.args.get("q", "").strip()
+
+    if not query:
+        return success_response("Search query is empty", [])
+
+    sessions = search_sessions_for_user(g.user["id"], query)
+    return success_response("Search results retrieved successfully", sessions)
 
 
 @sessions_bp.route("/<int:session_id>", methods=["GET"])

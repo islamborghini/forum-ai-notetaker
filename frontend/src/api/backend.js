@@ -108,6 +108,11 @@ export function getSessions() {
   return request("/api/sessions/");
 }
 
+export function searchSessions(query) {
+  const params = new URLSearchParams({ q: query });
+  return request(`/api/sessions/search?${params.toString()}`);
+}
+
 export function uploadSession({ title, file }) {
   // File uploads must be sent as multipart/form-data.
   const formData = new FormData();

@@ -469,6 +469,21 @@ button:disabled {
   gap: 12px;
 }
 
+/* --- Search --- */
+
+.search-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.search-form input {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
 /* --- Upload --- */
 
 .upload-form {
