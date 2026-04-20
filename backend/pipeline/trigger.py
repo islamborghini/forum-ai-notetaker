@@ -45,8 +45,8 @@ def trigger_pipeline(file_path: str, session_id: int) -> None:
     try:
         absolute_recording_path = _resolve_recording_path(file_path)
         audio_path = extract_audio(absolute_recording_path)
-        transcript_text = transcribe_audio(audio_path)
-        save_transcript(session_id, transcript_text)
+        transcript_text, segments = transcribe_audio(audio_path)
+        save_transcript(session_id, transcript_text, segments)
 
         try:
             notes = generate_notes_from_transcript(transcript_text)
