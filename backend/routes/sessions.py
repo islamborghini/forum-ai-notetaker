@@ -14,6 +14,7 @@ gateway between the frontend and the backend processing pipeline.
 
 import uuid
 from pathlib import Path
+from threading import Thread
 from flask import Blueprint, request, current_app, g
 
 from middleware.auth import auth_required
@@ -25,7 +26,7 @@ from services.session_service import (
     fetch_one_session,
 )
 from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
-from pipeline.trigger import trigger_pipeline
+from pipeline.trigger import run_pipeline_async
 
 sessions_bp = Blueprint("sessions", __name__)
 
@@ -68,6 +69,11 @@ def upload_session():
     enforcing permissions, storing the file, and initiating
     the pipeline.
 
+    IMPORTANT: This endpoint returns IMMEDIATELY (non-blocking).
+    The pipeline runs in a background thread. The response includes
+    the session_id, which can be used to poll the session status
+    as the pipeline processes.
+
     Requirements:
     - the user must be authenticated
     - a course_id must be provided in the request
@@ -81,6 +87,7 @@ def upload_session():
     This keeps the permission logic in place without introducing
     inconsistencies with the existing data model.
     """
+    print(f"[UPLOAD] Request received from user {g.user['id']}")
 
     if "file" not in request.files:
         return error_response("No file provided", 400)
@@ -138,6 +145,13 @@ def upload_session():
         course_id=course_id,
     )
 
-    trigger_pipeline(stored_path, session["id"])
+    print(f"[UPLOAD] File saved for session {session['id']}: {original_filename}")
+    print(f"[UPLOAD] Starting background pipeline thread for session {session['id']}...")
+    
+    thread = Thread(target=run_pipeline_async, args=(stored_path, session["id"]), daemon=True)
+    thread.start()
+    
+    print(f"[UPLOAD] Background thread started. Returning response immediately.")
+    print(f"[UPLOAD] Session {session['id']} status will update as pipeline progresses")
 
     return success_response("Recording uploaded successfully", session, 201)
