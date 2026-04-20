@@ -151,6 +151,47 @@ class SessionUploadTests(unittest.TestCase):
 
         mock_trigger_pipeline.assert_called_once_with(session["stored_path"], session["id"])
 
+    def test_upload_requires_file_field(self):
+        headers = {"Authorization": "Bearer test-token"}
+
+        with patch("middleware.auth.verify_token", return_value=self.instructor_user):
+            response = self.client.post(
+                "/api/sessions/upload",
+                data={"title": "Week 1 Lecture", "course_id": "1"},
+                headers=headers,
+                content_type="multipart/form-data",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "No file provided")
+
+    def test_upload_rejects_empty_filename(self):
+        response = self.post_upload(
+            user=self.instructor_user,
+            filename="",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "No file selected")
+
+    def test_upload_requires_title(self):
+        response = self.post_upload(
+            user=self.instructor_user,
+            title="",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "Title is required")
+
+    def test_upload_requires_course_id(self):
+        response = self.post_upload(
+            user=self.instructor_user,
+            course_id="",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "course_id is required")
+
 
 if __name__ == "__main__":
     unittest.main()
