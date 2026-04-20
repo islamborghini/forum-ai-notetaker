@@ -1,7 +1,7 @@
 """
 Shared response helpers.
 
-I separated this because I want all routes to return data
+We separated this because we want all routes to return data
 in a consistent structure. That makes frontend integration
 cleaner and avoids random response formats.
 """
