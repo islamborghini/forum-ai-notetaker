@@ -88,14 +88,6 @@ def upload_session():
     - the user must be authenticated
     - a course_id must be provided in the request
     - the user must be a TA or professor for that course
-
-    Important:
-    The current database schema does not yet link sessions to courses.
-    Because of this, course_id is used only for permission validation
-    at upload time and is not persisted with the session.
-
-    This keeps the permission logic in place without introducing
-    inconsistencies with the existing data model.
     """
 
     if "file" not in request.files:
