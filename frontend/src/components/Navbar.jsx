@@ -6,17 +6,11 @@ import { getCourses } from "../api/backend";
 export default function Navbar() {
   const { user, logout } = useAuth();
   const isProfessor = user?.user_type === "professor";
-  const [canUpload, setCanUpload] = useState(isProfessor);
+  const [isTaSomewhere, setIsTaSomewhere] = useState(false);
+  const canUpload = Boolean(user) && (isProfessor || isTaSomewhere);
 
   useEffect(() => {
-    if (!user) {
-      setCanUpload(false);
-      return;
-    }
-    if (isProfessor) {
-      setCanUpload(true);
-      return;
-    }
+    if (!user || isProfessor) return;
     let cancelled = false;
     getCourses()
       .then((payload) => {
@@ -24,10 +18,10 @@ export default function Navbar() {
         const eligible = (payload.data || []).some(
           (c) => c.role === "instructor" || c.role === "ta"
         );
-        setCanUpload(eligible);
+        setIsTaSomewhere(eligible);
       })
       .catch(() => {
-        if (!cancelled) setCanUpload(false);
+        if (!cancelled) setIsTaSomewhere(false);
       });
     return () => { cancelled = true; };
   }, [user, isProfessor]);
