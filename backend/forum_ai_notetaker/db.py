@@ -27,6 +27,19 @@ def _run_migrations(connection: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_sessions_course_id ON sessions(course_id)"
     )
 
+    if not _column_exists(connection, "users", "user_type"):
+        connection.execute(
+            "ALTER TABLE users "
+            "ADD COLUMN user_type TEXT NOT NULL DEFAULT 'student' "
+            "CHECK (user_type IN ('student', 'professor'))"
+        )
+
+    if not _column_exists(connection, "transcripts", "segments"):
+        connection.execute(
+            "ALTER TABLE transcripts "
+            "ADD COLUMN segments TEXT NOT NULL DEFAULT '[]'"
+        )
+
 
 def resolve_db_path(db_path: str | Path | None = None) -> Path:
     path = Path(db_path) if db_path is not None else DEFAULT_DB_PATH

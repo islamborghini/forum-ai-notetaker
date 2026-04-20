@@ -3,30 +3,34 @@ Session routes.
 
 A session represents one uploaded course recording.
 
-This file defines the entry points for:
-- retrieving uploaded recordings
-- handling the upload workflow
+This module defines endpoints for:
+- listing sessions visible to the authenticated user
+- retrieving a specific session by ID
+- uploading a new recording and triggering processing
+- searching sessions by title, transcript content, and notes
 
-The upload route is where authentication and permission checks
-are enforced before a recording enters the system. It acts as the
-gateway between the frontend and the backend processing pipeline.
+Because sessions are course-scoped resources, access checks are
+performed before session data is returned. This ensures that users
+only see sessions belonging to courses they are enrolled in.
 """
 
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from flask import Blueprint, request, current_app, g
+
+from flask import Blueprint, current_app, g, request
 
 from middleware.auth import auth_required
-from utils.responses import success_response, error_response
-from utils.validators import allowed_file, safe_filename
+from pipeline.trigger import run_pipeline_async
+from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
+from services.search_service import search
 from services.session_service import (
     create_session_record,
-    fetch_sessions_for_user,
     fetch_one_session,
+    fetch_sessions_for_user,
 )
-from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
-from pipeline.trigger import run_pipeline_async
+from utils.responses import error_response, success_response
+from utils.validators import allowed_file, safe_filename
 
 executor = ThreadPoolExecutor(max_workers=2)
 
@@ -37,17 +41,54 @@ sessions_bp = Blueprint("sessions", __name__)
 @auth_required
 def get_sessions():
     """
-    Return sessions for the authenticated user's courses.
+    Return all sessions visible to the authenticated user.
+
+    Results are limited to sessions belonging to courses
+    the user is a member of.
     """
     sessions = fetch_sessions_for_user(g.user["id"])
     return success_response("Sessions retrieved successfully", sessions)
+
+
+@sessions_bp.route("/search", methods=["GET"])
+@auth_required
+def search_sessions():
+    """
+    Search sessions by title, transcript content, and notes.
+
+    Results are filtered to the authenticated user's courses and
+    enriched with match metadata and snippets.
+
+    Query parameters:
+        q — the search string (required, max 200 characters)
+
+    Returns 400 if q is missing, empty, or too long.
+    Returns 200 with a list of enriched matching sessions.
+
+    Example:
+        GET /api/sessions/search?q=memory+management
+    """
+    query = request.args.get("q", "").strip()
+
+    if not query:
+        return error_response("Search query parameter 'q' is required", 400)
+
+    try:
+        results = search(query, g.user["id"])
+    except ValueError as exc:
+        return error_response(str(exc), 400)
+
+    return success_response("Search results retrieved successfully", results)
 
 
 @sessions_bp.route("/<int:session_id>", methods=["GET"])
 @auth_required
 def get_session(session_id: int):
     """
-    Return a single session by ID. Verifies course membership.
+    Return one session by ID if the user is authorized to view it.
+
+    Returns 404 if the session does not exist.
+    Returns 403 if the user is not a member of the session's course.
     """
     session = fetch_one_session(session_id)
 
@@ -65,11 +106,13 @@ def get_session(session_id: int):
 @auth_required
 def upload_session():
     """
-    Upload a recording and trigger processing.
+    Upload a recording and trigger the processing pipeline.
 
-    This route is responsible for validating the request,
-    enforcing permissions, storing the file, and initiating
-    the pipeline.
+    This route performs four main steps:
+    1. validates the incoming request
+    2. checks that the user has upload permission for the course
+    3. stores the uploaded recording with a unique filename
+    4. creates a session record and starts processing
 
     IMPORTANT: This endpoint returns IMMEDIATELY (non-blocking).
     The pipeline runs in a background thread. The response includes
@@ -90,7 +133,6 @@ def upload_session():
     inconsistencies with the existing data model.
     """
     print(f"[UPLOAD] Request received from user {g.user['id']}")
-
     if "file" not in request.files:
         return error_response("No file provided", 400)
 
@@ -117,7 +159,7 @@ def upload_session():
         return error_response("Course not found", 404)
 
     if not is_ta_or_professor(course_id, g.user["id"]):
-        return error_response("Only a TA or professor can upload to this course", 403)
+        return error_response("Only a TA or instructor can upload to this course", 403)
 
     if not allowed_file(file.filename):
         return error_response("Unsupported file type", 400)
@@ -136,7 +178,6 @@ def upload_session():
     file_path = upload_folder / unique_filename
     file.save(str(file_path))
 
-    # Store a backend-relative path, not an absolute machine path.
     stored_path = str(Path("uploads") / unique_filename)
 
     session = create_session_record(

@@ -35,8 +35,8 @@ export default function AuthProvider({ children }) {
     return payload;
   }, []);
 
-  const register = useCallback(async (name, email, password) => {
-    const payload = await registerUser(name, email, password);
+  const register = useCallback(async (name, email, password, userType) => {
+    const payload = await registerUser(name, email, password, userType);
     localStorage.setItem("token", payload.data.token);
     setUser(payload.data.user);
     return payload;

@@ -24,6 +24,7 @@ from services.course_service import (
     join_course_by_invite_code,
 )
 from services.course_member_service import get_course_member, update_course_member_role
+from services.user_service import get_user_by_id
 from utils.responses import error_response, success_response
 
 
@@ -41,6 +42,9 @@ def create_new_course():
         "name": "..."
     }
     """
+    if g.user.get("user_type") != "professor":
+        return error_response("Only professors can create courses", 403)
+
     data = request.get_json(silent=True) or {}
     name = data.get("name", "").strip()
 
@@ -72,6 +76,9 @@ def join_course():
     data = request.get_json(silent=True)
     if data is None:
         return error_response("Request body must be JSON", 400)
+
+    if g.user.get("user_type") != "student":
+        return error_response("Only student accounts can join courses via invite code", 403)
 
     invite_code = (data.get("invite_code") or "").strip().upper()
     if not invite_code:

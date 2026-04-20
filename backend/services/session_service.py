@@ -1,10 +1,14 @@
 """
 Session service layer.
 
-This module connects session routes to the SQLite database.
+This module handles persistence and retrieval of session records.
 
-A session represents one uploaded recording plus the metadata
-used to track its processing state through the pipeline.
+A session represents one uploaded recording plus the metadata needed
+to track it through the processing pipeline, such as status and
+course ownership.
+
+All session-related database access is centralized here so that route
+handlers do not need to work directly with SQL queries.
 """
 
 from typing import Optional
@@ -14,10 +18,10 @@ from forum_ai_notetaker.db import get_connection
 
 def _row_to_dict(row) -> dict:
     """
-    Convert a SQLite row object into a plain dictionary.
+    Convert a raw database row into a plain Python dictionary.
 
-    Keeping this helper here avoids repeating `dict(row)` across
-    the service layer and keeps the returned shape consistent.
+    This helper keeps the return format consistent across the service
+    layer and avoids repeating conversion logic in every function.
     """
     return dict(row)
 
@@ -27,14 +31,22 @@ def create_session_record(
     original_filename: str,
     stored_path: str,
     status: str,
-    course_id: Optional[int] = None,
+    course_id: int,
 ) -> dict:
     """
     Create and store a new session record.
 
-    This function is called after a recording has been uploaded
-    successfully. It persists the metadata needed for later
-    retrieval and pipeline status tracking.
+    This function is called after an uploaded file has passed
+    validation and has been saved to disk. It persists the session
+    metadata so the rest of the system can track processing state
+    and enforce course-based access control.
+
+    Args:
+        title: Human-readable title of the session.
+        original_filename: The original uploaded filename after cleaning.
+        stored_path: The backend-relative path where the file is stored.
+        status: The current processing state of the session.
+        course_id: The course the session belongs to.
 
     Returns:
         A dictionary representing the newly created session.
@@ -58,45 +70,38 @@ def create_session_record(
         conn.commit()
 
         row = conn.execute(
-            "SELECT * FROM sessions WHERE id = ?",
+            """
+            SELECT *
+            FROM sessions
+            WHERE id = ?
+            """,
             (cursor.lastrowid,),
         ).fetchone()
 
     return _row_to_dict(row)
 
 
-def fetch_all_sessions() -> list[dict]:
-    """
-    Return all sessions currently stored in the database.
-
-    Sessions are ordered with the most recent first so the frontend
-    can display newly uploaded recordings at the top.
-    """
-    with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT id, title, original_filename, stored_path, status, created_at, updated_at
-            FROM sessions
-            ORDER BY id DESC
-            """
-        ).fetchall()
-
-    return [_row_to_dict(row) for row in rows]
-
-
 def fetch_sessions_for_user(user_id: int) -> list[dict]:
     """
-    Return sessions belonging to courses the user is a member of.
+    Return all sessions visible to a given user.
+
+    A session is visible only if the user belongs to the course
+    associated with that session.
+
+    Args:
+        user_id: The ID of the authenticated user.
+
+    Returns:
+        A list of session dictionaries ordered by most recent first.
     """
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT s.id, s.title, s.original_filename, s.stored_path,
-                   s.status, s.course_id, s.created_at, s.updated_at
-            FROM sessions s
-            JOIN course_members cm ON cm.course_id = s.course_id
+            SELECT s.*
+            FROM sessions AS s
+            JOIN course_members AS cm ON s.course_id = cm.course_id
             WHERE cm.user_id = ?
-            ORDER BY s.created_at DESC
+            ORDER BY s.id DESC
             """,
             (user_id,),
         ).fetchall()
@@ -106,7 +111,10 @@ def fetch_sessions_for_user(user_id: int) -> list[dict]:
 
 def fetch_one_session(session_id: int) -> Optional[dict]:
     """
-    Return one session by ID.
+    Retrieve a single session by ID.
+
+    Args:
+        session_id: The ID of the session being requested.
 
     Returns:
         A session dictionary if found, otherwise None.
@@ -114,7 +122,7 @@ def fetch_one_session(session_id: int) -> Optional[dict]:
     with get_connection() as conn:
         row = conn.execute(
             """
-            SELECT id, title, original_filename, stored_path, status, course_id, created_at, updated_at
+            SELECT *
             FROM sessions
             WHERE id = ?
             """,
@@ -124,13 +132,73 @@ def fetch_one_session(session_id: int) -> Optional[dict]:
     return _row_to_dict(row) if row else None
 
 
+def search_sessions_for_user(user_id: int, query: str) -> list[dict]:
+    """
+    Search sessions by title, transcript content, and generated notes,
+    restricted to the authenticated user's courses.
+
+    A session is included in the results if:
+    - the user belongs to the session's course, and
+    - the query matches at least one of:
+        • session title
+        • transcript content
+        • notes summary
+        • notes topics (stored as JSON string)
+        • notes action items (stored as JSON string)
+
+    In addition to the session fields, this query also returns the
+    matching transcript and notes text so the search layer can build
+    snippets for the frontend.
+
+    Args:
+        user_id: The authenticated user's ID.
+        query: The search term provided by the user.
+
+    Returns:
+        A list of matching session dictionaries ordered by most recent first.
+    """
+    like_query = f"%{query}%"
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT
+                s.*,
+                t.content AS transcript_content,
+                n.summary AS notes_summary,
+                n.topics AS notes_topics,
+                n.action_items AS notes_action_items
+            FROM sessions AS s
+            JOIN course_members AS cm ON s.course_id = cm.course_id
+            LEFT JOIN transcripts AS t ON t.session_id = s.id
+            LEFT JOIN notes AS n ON n.session_id = s.id
+            WHERE cm.user_id = ?
+              AND (
+                    s.title LIKE ?
+                    OR COALESCE(t.content, '') LIKE ?
+                    OR COALESCE(n.summary, '') LIKE ?
+                    OR COALESCE(n.topics, '') LIKE ?
+                    OR COALESCE(n.action_items, '') LIKE ?
+                  )
+            ORDER BY s.id DESC
+            """,
+            (user_id, like_query, like_query, like_query, like_query, like_query),
+        ).fetchall()
+
+    return [_row_to_dict(row) for row in rows]
+
+
 def update_session_status(session_id: int, new_status: str) -> None:
     """
     Update the processing status of a session.
 
-    This is typically called by the pipeline as the recording moves
+    This is typically called by the pipeline as a recording moves
     through different stages such as uploaded, processing,
     transcribed, or notes_generated.
+
+    Args:
+        session_id: The session being updated.
+        new_status: The new processing state to store.
     """
     with get_connection() as conn:
         conn.execute(
@@ -144,7 +212,7 @@ def update_session_status(session_id: int, new_status: str) -> None:
         conn.commit()
 
 
-def recover_interrupted_processing_sessions() -> None:
+    def recover_interrupted_processing_sessions() -> None:
     """
     Mark any sessions stuck in processing as failed on startup.
     """
