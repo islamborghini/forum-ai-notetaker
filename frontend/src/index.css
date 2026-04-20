@@ -141,7 +141,8 @@ button:disabled {
   color: #374151;
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
   padding: 10px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -154,7 +155,8 @@ button:disabled {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-.form-field input:disabled {
+.form-field input:disabled,
+.form-field select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   background-color: #f1f5f9;
@@ -527,5 +529,19 @@ button:disabled {
 .error-text {
   margin-top: 0;
   color: #b91c1c;
+  font-size: 14px;
+}
+
+/* --- Status messages --- */
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-processing {
+  margin: 6px 0 0;
+  animation: pulse-text 2s ease-in-out infinite;
+  color: #2563eb;
   font-size: 14px;
 }

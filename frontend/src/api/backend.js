@@ -113,11 +113,17 @@ export function searchSessions(query) {
   return request(`/api/sessions/search?${params.toString()}`);
 }
 
-export function uploadSession({ title, file }) {
-  // File uploads must be sent as multipart/form-data.
+export function getSession(sessionId) {
+  return request(`/api/sessions/${sessionId}`);
+}
+
+export function uploadSession({ title, file, courseId }) {
   const formData = new FormData();
   formData.append("title", title);
   formData.append("file", file);
+  if (courseId) {
+    formData.append("course_id", courseId);
+  }
 
   return request("/api/sessions/upload", {
     method: "POST",
