@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { searchSessions } from "../api/backend";
+import { getSessionStatusLabel } from "../utils/sessionStatus";
 
 export default function Search() {
   const [query, setQuery] = useState("");
@@ -68,7 +69,9 @@ export default function Search() {
               <div>
                 <strong>{session.title}</strong>
                 <p className="muted-text">{session.original_filename}</p>
-                <p className="muted-text">Status: {session.status}</p>
+                <p className="muted-text">
+                  Status: {getSessionStatusLabel(session.status)}
+                </p>
               </div>
               <Link to={`/notes/${session.id}`}>View transcript/notes</Link>
             </li>

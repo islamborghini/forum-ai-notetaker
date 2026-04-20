@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCourses, getSessions } from "../api/backend";
+import {
+  getSessionStatusLabel,
+  SESSION_STATUS_FILTERS,
+} from "../utils/sessionStatus";
 
 export default function Dashboard() {
   const [courses, setCourses] = useState([]);
@@ -45,11 +49,11 @@ export default function Dashboard() {
 
   const summary = useMemo(() => {
     const total = sessions.length;
-    const transcribed = sessions.filter(
-      (s) => s.status === "transcribed"
+    const ready = sessions.filter(
+      (s) => s.status === "transcribed" || s.status === "notes_generated"
     ).length;
     const failed = sessions.filter((s) => s.status === "failed").length;
-    return { total, transcribed, failed };
+    return { total, ready, failed };
   }, [sessions]);
 
   const filteredSessions = useMemo(() => {
@@ -125,8 +129,8 @@ export default function Dashboard() {
           <strong>{summary.total}</strong>
         </div>
         <div className="stat-card">
-          <span>Transcribed</span>
-          <strong>{summary.transcribed}</strong>
+          <span>Ready</span>
+          <strong>{summary.ready}</strong>
         </div>
         <div className="stat-card">
           <span>Failed</span>
@@ -148,10 +152,11 @@ export default function Dashboard() {
           aria-label="Filter by status"
         >
           <option value="all">All statuses</option>
-          <option value="uploaded">Uploaded</option>
-          <option value="processing">Processing</option>
-          <option value="transcribed">Transcribed</option>
-          <option value="failed">Failed</option>
+          {SESSION_STATUS_FILTERS.map((statusOption) => (
+            <option key={statusOption.value} value={statusOption.value}>
+              {statusOption.label}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -164,7 +169,9 @@ export default function Dashboard() {
               <div>
                 <strong>{session.title}</strong>
                 <p className="muted-text">{session.original_filename}</p>
-                <p className="muted-text">Status: {session.status}</p>
+                <p className="muted-text">
+                  Status: {getSessionStatusLabel(session.status)}
+                </p>
               </div>
               <Link to={`/notes/${session.id}`}>View transcript/notes</Link>
             </li>

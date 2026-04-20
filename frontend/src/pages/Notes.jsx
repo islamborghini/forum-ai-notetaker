@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getSession, getNotes, getTranscript } from "../api/backend";
-
-const STATUS_LABELS = {
-  uploaded: "Uploaded",
-  processing: "Processing",
-  transcribed: "Transcript Ready",
-  notes_generated: "Notes Ready",
-  failed: "Failed",
-};
+import {
+  getSessionStatusLabel,
+  SESSION_STATUS_LABELS,
+} from "../utils/sessionStatus";
 
 function formatTimestamp(value) {
   if (!value) return "Unknown";
@@ -89,7 +85,7 @@ export default function Notes() {
   }
 
   const status = session?.status;
-  const KNOWN_STATUSES = Object.keys(STATUS_LABELS);
+  const KNOWN_STATUSES = Object.keys(SESSION_STATUS_LABELS);
   const topics = notes?.topics || [];
   const actionItems = notes?.action_items || [];
   const hasTranscript = Boolean(transcript?.content);
@@ -109,7 +105,7 @@ export default function Notes() {
       <div className="notes-meta">
         <div className="notes-meta-item">
           <span className="notes-meta-label">Status</span>
-          <strong>{STATUS_LABELS[status] || status || "Unknown"}</strong>
+          <strong>{getSessionStatusLabel(status)}</strong>
         </div>
         <div className="notes-meta-item">
           <span className="notes-meta-label">Last updated</span>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import { getCourse, getCourseSessions, updateMemberRole } from "../api/backend";
+import { getSessionStatusLabel } from "../utils/sessionStatus";
 
 export default function Course() {
   const { id } = useParams();
@@ -167,7 +168,9 @@ export default function Course() {
               <div>
                 <strong>{session.title}</strong>
                 <p className="muted-text">{session.original_filename}</p>
-                <p className="muted-text">Status: {session.status}</p>
+                <p className="muted-text">
+                  Status: {getSessionStatusLabel(session.status)}
+                </p>
               </div>
               <Link to={`/notes/${session.id}`}>View transcript/notes</Link>
             </li>
