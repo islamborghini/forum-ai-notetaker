@@ -23,7 +23,36 @@ Upload recording → Extract audio (FFmpeg) → Transcribe (Whisper) → Save to
 4. Whisper (`base.en` model) transcribes the audio to text
 5. Transcript is saved to SQLite and session status is updated
 
-## Setup
+## Quick Start (Docker)
+
+One-command setup. Docker handles Python, Node, FFmpeg, and the Whisper model for you.
+
+```bash
+cp .env.example .env          # optional: paste your Groq key into .env
+docker compose up --build
+```
+
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:5000
+
+The Groq API key is **provided separately** with the assignment submission — no signup needed. If `.env` is empty or missing, the app still works end-to-end: note generation falls back to a local heuristic summary instead of calling Groq.
+
+### Architecture
+
+```
+┌──────────────────┐        ┌──────────────────────────────────┐
+│  frontend (nginx)│        │          backend (gunicorn)      │
+│  React build     │  /api  │  Flask + Whisper + FFmpeg        │
+│  port 5173 → 80  │ ─────▶ │  port 5000                       │
+└──────────────────┘        │                                  │
+                            │  ./data   → /app/data (sqlite)   │
+                            │  ./uploads → /app/backend/uploads│
+                            └──────────────────────────────────┘
+```
+
+Two containers on the default Compose network. nginx serves the built React app and proxies `/api/*` to the backend by service name. SQLite and uploaded recordings are bind-mounted so data survives container restarts. The Whisper `base.en` model is baked into the backend image, so the first transcription does not need internet.
+
+## Manual Setup (without Docker)
 
 ### Prerequisites
 
