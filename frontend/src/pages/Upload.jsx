@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { uploadSession, getCourses } from "../api/backend";
+import useAuth from "../hooks/useAuth";
 
 const ALLOWED_EXTENSIONS = ["mp4", "mp3", "wav", "m4a"];
 
 export default function Upload() {
   const navigate = useNavigate();
   const { id: routeCourseId } = useParams();
+  const { user } = useAuth();
+  const isProfessor = user?.user_type === "professor";
   const [title, setTitle] = useState("");
   const [file, setFile] = useState(null);
   const [courseId, setCourseId] = useState("");
@@ -145,13 +148,17 @@ export default function Upload() {
         <h1>Upload Session</h1>
         <div className="empty-state">
           <p>
-            You need to be an instructor or TA in a course to upload sessions.
+            {isProfessor
+              ? "You need to create a course before uploading recordings."
+              : "Only TAs and instructors can upload recordings. Ask your instructor to promote you to TA."}
           </p>
-          <div className="empty-state-actions">
-            <Link to="/courses/create" className="btn-link">
-              Create a course
-            </Link>
-          </div>
+          {isProfessor ? (
+            <div className="empty-state-actions">
+              <Link to="/courses/create" className="btn-link">
+                Create a course
+              </Link>
+            </div>
+          ) : null}
         </div>
       </div>
     );
