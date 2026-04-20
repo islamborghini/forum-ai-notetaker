@@ -52,11 +52,11 @@ export function loginUser(email, password) {
   });
 }
 
-export function registerUser(name, email, password) {
+export function registerUser(name, email, password, userType) {
   return request("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, user_type: userType }),
   });
 }
 
@@ -105,14 +105,25 @@ export function updateMemberRole(courseId, userId, role) {
 // --- Sessions ---
 
 export function getSessions() {
-  return request("/api/sessions");
+  return request("/api/sessions/");
 }
 
-export function uploadSession({ title, file }) {
-  // File uploads must be sent as multipart/form-data.
+export function searchSessions(query) {
+  const params = new URLSearchParams({ q: query });
+  return request(`/api/sessions/search?${params.toString()}`);
+}
+
+export function getSession(sessionId) {
+  return request(`/api/sessions/${sessionId}`);
+}
+
+export function uploadSession({ title, file, courseId }) {
   const formData = new FormData();
   formData.append("title", title);
   formData.append("file", file);
+  if (courseId) {
+    formData.append("course_id", courseId);
+  }
 
   return request("/api/sessions/upload", {
     method: "POST",

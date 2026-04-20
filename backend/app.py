@@ -1,16 +1,25 @@
 """
-Main Flask application entry point.
+Application entry point.
 
-This file creates the Flask server and registers all route groups.
+This module creates and configures the Flask application that powers
+the backend API.
 
-In this project, the backend acts as the coordination layer. It
-receives requests from the frontend, validates them, and connects
-them to the rest of the system, including the processing pipeline
-and the data layer.
+The backend acts as the coordination layer of the system:
+- receives requests from the frontend
+- validates and authorizes users
+- routes requests to the appropriate service layer
+- connects to the processing pipeline and database
 
-The database schema and AI models are handled by other roles on
-the team. My responsibility here is to keep the backend API clean,
-organized, and easy to extend.
+Blueprints and their URL prefixes:
+    /api/auth        — authentication and user identity
+    /api/sessions    — upload, retrieve, and search recordings
+    /api/transcripts — access transcript data
+    /api/notes       — access AI-generated notes
+    /api/courses     — course creation and membership
+
+This file intentionally does not implement business logic. Its role is
+to assemble the application and wire together all components in a
+centralized and maintainable way.
 """
 
 from pathlib import Path
@@ -24,19 +33,29 @@ load_dotenv()
 from forum_ai_notetaker.db import init_db
 
 # Import route groups
+from routes.auth import auth_bp
+from routes.courses import courses_bp
+from routes.notes import notes_bp
 from routes.sessions import sessions_bp
 from routes.transcripts import transcripts_bp
-from routes.notes import notes_bp
-from routes.courses import courses_bp
-from routes.auth import auth_bp
 
 
-def create_app():
+def create_app() -> Flask:
     """
-    Create and configure the Flask application.
+    Create and configure the Flask application instance.
 
-    Keeping app creation inside a function makes the backend easier
-    to test, configure, and scale as the project grows.
+    This function is responsible for:
+    - initializing the database schema
+    - configuring global settings (e.g., upload directory)
+    - enabling CORS for frontend communication
+    - registering all route blueprints
+
+    Using an application factory pattern improves testability,
+    modularity, and scalability by avoiding global state and
+    allowing multiple app instances if needed.
+
+    Returns:
+        A fully configured Flask application instance.
     """
     app = Flask(__name__)
 
@@ -55,19 +74,16 @@ def create_app():
     app.config["UPLOAD_FOLDER"] = str(upload_folder)
 
     # Register API route groups.
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
     app.register_blueprint(transcripts_bp, url_prefix="/api/transcripts")
     app.register_blueprint(notes_bp, url_prefix="/api/notes")
     app.register_blueprint(courses_bp, url_prefix="/api/courses")
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
 
     @app.route("/", methods=["GET"])
     def home():
         """
-        Root route used to confirm the API is running.
-
-        This avoids a 404 at the base URL and gives a small hint
-        about where to test the backend.
+        Root endpoint for basic API verification.
         """
         return {
             "message": "Backend API is running.",
@@ -77,10 +93,7 @@ def create_app():
     @app.route("/api/health", methods=["GET"])
     def health():
         """
-        Health check route used during development.
-
-        This is a simple way to confirm that the backend server
-        is running and reachable before testing real endpoints.
+        Health check endpoint.
         """
         return {
             "status": "ok",

@@ -1,9 +1,14 @@
+import logging
+
 from .db import init_db
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     db_path = init_db()
-    print(f"Initialized SQLite database at {db_path}")
+    logger.info("Initialized SQLite database at %s", db_path)
 
 
 if __name__ == "__main__":

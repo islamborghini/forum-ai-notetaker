@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { joinCourse } from "../api/backend";
+import useAuth from "../hooks/useAuth";
 
 export default function JoinCourse() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  if (user && user.user_type !== "student") {
+    return <Navigate to="/" replace />;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();

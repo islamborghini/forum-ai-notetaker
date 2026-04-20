@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { createCourse } from "../api/backend";
+import useAuth from "../hooks/useAuth";
 
 export default function CreateCourse() {
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -15,6 +17,10 @@ export default function CreateCourse() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
+
+  if (user && user.user_type !== "professor") {
+    return <Navigate to="/" replace />;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();

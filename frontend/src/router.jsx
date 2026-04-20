@@ -49,6 +49,14 @@ export default function AppRouter() {
         }
       />
       <Route
+        path="/courses/:id/upload"
+        element={
+          <ProtectedRoute>
+            <Upload />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/notes/:id"
         element={
           <ProtectedRoute>

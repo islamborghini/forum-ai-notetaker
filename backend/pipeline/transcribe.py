@@ -1,6 +1,7 @@
 """Transcription step for the Sprint 1 pipeline.
 
-This module loads Whisper base.en and returns transcript text for one audio file.
+This module loads Whisper base.en and returns transcript text and
+timestamped segments for one audio file.
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from pathlib import Path
 import whisper
 
 
-def transcribe_audio(audio_path: str) -> str:
+def transcribe_audio(audio_path: str) -> tuple[str, list[dict]]:
     """
     Transcribe an audio file to text using Whisper base.en.
 
@@ -18,7 +19,9 @@ def transcribe_audio(audio_path: str) -> str:
         audio_path: Path to input audio file (expected WAV for this pipeline).
 
     Returns:
-        Transcript text as a string.
+        A tuple of (transcript_text, segments), where each segment is a dict
+        with keys ``start`` (float seconds), ``end`` (float seconds), and
+        ``text`` (str).
 
     Raises:
         ValueError: If audio_path is empty or invalid.
@@ -75,4 +78,18 @@ def transcribe_audio(audio_path: str) -> str:
             "Check that the audio file contains audible speech."
         )
 
-    return text
+    raw_segments = (result or {}).get("segments") or []
+    segments: list[dict] = []
+    for seg in raw_segments:
+        seg_text = (seg.get("text") or "").strip()
+        if not seg_text:
+            continue
+        segments.append(
+            {
+                "start": float(seg.get("start", 0.0)),
+                "end": float(seg.get("end", 0.0)),
+                "text": seg_text,
+            }
+        )
+
+    return text, segments
