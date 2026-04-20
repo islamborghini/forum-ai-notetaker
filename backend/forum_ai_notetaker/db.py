@@ -34,6 +34,12 @@ def _run_migrations(connection: sqlite3.Connection) -> None:
             "CHECK (user_type IN ('student', 'professor'))"
         )
 
+    if not _column_exists(connection, "transcripts", "segments"):
+        connection.execute(
+            "ALTER TABLE transcripts "
+            "ADD COLUMN segments TEXT NOT NULL DEFAULT '[]'"
+        )
+
 
 def resolve_db_path(db_path: str | Path | None = None) -> Path:
     path = Path(db_path) if db_path is not None else DEFAULT_DB_PATH

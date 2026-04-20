@@ -17,6 +17,14 @@ function formatTimestamp(value) {
   return date.toLocaleString();
 }
 
+function formatSegmentTime(seconds) {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
 export default function Notes() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
@@ -88,6 +96,7 @@ export default function Notes() {
   const KNOWN_STATUSES = Object.keys(SESSION_STATUS_LABELS);
   const topics = notes?.topics || [];
   const actionItems = notes?.action_items || [];
+  const segments = Array.isArray(transcript?.segments) ? transcript.segments : [];
   const hasTranscript = Boolean(transcript?.content);
   const hasNotes = Boolean(notes);
 
@@ -177,7 +186,20 @@ export default function Notes() {
 
         {hasTranscript ? (
           <div className="notes-block">
-            <p>{transcript.content}</p>
+            {segments.length > 0 ? (
+              <ol className="transcript-segments">
+                {segments.map((seg, index) => (
+                  <li key={`${seg.start}-${index}`}>
+                    <span className="transcript-timestamp">
+                      {formatSegmentTime(seg.start)}
+                    </span>
+                    <span className="transcript-text">{seg.text}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p>{transcript.content}</p>
+            )}
           </div>
         ) : status === "uploaded" ? (
           <p className="muted-text">Waiting for processing to start...</p>

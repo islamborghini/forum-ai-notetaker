@@ -37,8 +37,9 @@ def main() -> None:
     print(f"[test_pipeline] Using video: {video_path}")
 
     try:
-        transcript = process_recording(video_path)
+        transcript, segments = process_recording(video_path)
         print("\n[test_pipeline] ✅ Pipeline completed successfully.")
+        print(f"[test_pipeline] Got {len(segments)} timestamped segments.")
         print("[test_pipeline] Transcript:\n")
         print(transcript)
     except Exception as exc:
