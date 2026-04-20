@@ -1,3 +1,13 @@
+"""
+Tests for the session upload route.
+
+This module exercises the /api/sessions/upload endpoint with an
+isolated Flask app, temporary SQLite database, and temporary upload
+directory. The tests focus on the route's core responsibilities:
+request validation, permission checks, file persistence, and session
+record creation.
+"""
+
 import io
 import sys
 import tempfile
@@ -10,6 +20,10 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+# Importing the sessions blueprint pulls in optional runtime
+# dependencies from the processing pipeline. These upload route tests
+# do not need the real implementations, so lightweight stubs keep the
+# module importable in the test environment.
 if "dotenv" not in sys.modules:
     dotenv_module = ModuleType("dotenv")
     dotenv_module.load_dotenv = lambda *args, **kwargs: None
@@ -37,7 +51,18 @@ from routes.sessions import sessions_bp
 
 
 class SessionUploadTests(unittest.TestCase):
+    """Tests for the session upload endpoint."""
+
     def setUp(self):
+        """
+        Build an isolated app and seed the minimum data needed.
+
+        Each test gets:
+        - a temporary SQLite database
+        - a temporary upload folder
+        - one course
+        - one instructor user and one student user in that course
+        """
         self.tempdir = tempfile.TemporaryDirectory()
         self.original_db_path = db.DEFAULT_DB_PATH
         db.DEFAULT_DB_PATH = Path(self.tempdir.name) / "test.sqlite3"
@@ -49,6 +74,8 @@ class SessionUploadTests(unittest.TestCase):
         self.app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
         self.client = self.app.test_client()
 
+        # Seed one upload-capable user and one student so permission
+        # scenarios can reuse the same base fixture.
         with db.get_connection() as conn:
             conn.executescript(
                 """
@@ -86,10 +113,19 @@ class SessionUploadTests(unittest.TestCase):
         }
 
     def tearDown(self):
+        """Restore global DB state and clean up temporary files."""
         db.DEFAULT_DB_PATH = self.original_db_path
         self.tempdir.cleanup()
 
-    def post_upload(self, *, user, title="Week 1 Lecture", course_id="1", filename="lecture.mp3"):
+    def post_upload(
+        self, *, user, title="Week 1 Lecture", course_id="1", filename="lecture.mp3"
+    ):
+        """
+        Send an authenticated multipart upload request as the given user.
+
+        This helper keeps the individual tests focused on one assertion
+        path instead of repeating multipart request setup.
+        """
         data = {
             "title": title,
             "course_id": course_id,
@@ -97,6 +133,7 @@ class SessionUploadTests(unittest.TestCase):
         }
         headers = {"Authorization": "Bearer test-token"}
 
+        # Patch the auth middleware at the import site used by the decorator.
         with patch("middleware.auth.verify_token", return_value=user):
             return self.client.post(
                 "/api/sessions/upload",
@@ -106,7 +143,15 @@ class SessionUploadTests(unittest.TestCase):
             )
 
     @patch("routes.sessions.trigger_pipeline")
-    def test_upload_creates_session_saves_file_and_triggers_pipeline(self, mock_trigger_pipeline):
+    def test_upload_creates_session_saves_file_and_triggers_pipeline(
+        self, mock_trigger_pipeline
+    ):
+        """
+        A valid instructor upload should complete the full route flow.
+
+        The route should sanitize and save the file, create a session
+        row, return a 201 response, and trigger downstream processing.
+        """
         response = self.post_upload(
             user=self.instructor_user,
             title="Week 1 Lecture",
@@ -149,9 +194,12 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(row["status"], "uploaded")
         self.assertEqual(row["course_id"], 1)
 
-        mock_trigger_pipeline.assert_called_once_with(session["stored_path"], session["id"])
+        mock_trigger_pipeline.assert_called_once_with(
+            session["stored_path"], session["id"]
+        )
 
     def test_upload_requires_file_field(self):
+        """Reject requests that omit the multipart file field entirely."""
         headers = {"Authorization": "Bearer test-token"}
 
         with patch("middleware.auth.verify_token", return_value=self.instructor_user):
@@ -166,6 +214,7 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "No file provided")
 
     def test_upload_rejects_empty_filename(self):
+        """Reject an upload when the user submits an empty filename."""
         response = self.post_upload(
             user=self.instructor_user,
             filename="",
@@ -175,6 +224,7 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "No file selected")
 
     def test_upload_requires_title(self):
+        """Reject an upload when the session title is blank."""
         response = self.post_upload(
             user=self.instructor_user,
             title="",
@@ -184,6 +234,7 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "Title is required")
 
     def test_upload_requires_course_id(self):
+        """Reject an upload when course_id is missing from the form data."""
         response = self.post_upload(
             user=self.instructor_user,
             course_id="",
@@ -193,6 +244,7 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "course_id is required")
 
     def test_upload_requires_integer_course_id(self):
+        """Reject course_id values that cannot be parsed as integers."""
         response = self.post_upload(
             user=self.instructor_user,
             course_id="abc",
@@ -202,6 +254,7 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "course_id must be an integer")
 
     def test_upload_returns_not_found_for_missing_course(self):
+        """Return 404 when the target course does not exist."""
         response = self.post_upload(
             user=self.instructor_user,
             course_id="999",
@@ -211,6 +264,7 @@ class SessionUploadTests(unittest.TestCase):
         self.assertEqual(response.get_json()["error"], "Course not found")
 
     def test_upload_rejects_students_without_upload_permission(self):
+        """Reject student uploads because only TAs and instructors may upload."""
         response = self.post_upload(
             user=self.student_user,
         )
@@ -222,6 +276,7 @@ class SessionUploadTests(unittest.TestCase):
         )
 
     def test_upload_rejects_unsupported_file_types(self):
+        """Reject files whose extensions are not in the allowed upload list."""
         response = self.post_upload(
             user=self.instructor_user,
             filename="notes.txt",
