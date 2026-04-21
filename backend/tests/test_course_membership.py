@@ -150,6 +150,66 @@ class CourseMembershipTests(unittest.TestCase):
         self.assertEqual(membership["user_id"], 3)
         self.assertEqual(membership["role"], "student")
 
+    def test_join_course_requires_json_body(self):
+        """Reject join requests that do not send a JSON body."""
+        headers = {"Authorization": "Bearer test-token"}
+
+        with patch("middleware.auth.verify_token", return_value=self.outsider_user):
+            response = self.client.post("/api/courses/join", headers=headers)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "Request body must be JSON")
+
+    def test_join_course_requires_invite_code(self):
+        """Reject join requests with a missing invite code."""
+        response = self.post_json(
+            "/api/courses/join",
+            user=self.outsider_user,
+            json={},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "Invite code required")
+
+    def test_join_course_rejects_invalid_invite_code(self):
+        """Return 404 when the invite code does not match any course."""
+        response = self.post_json(
+            "/api/courses/join",
+            user=self.outsider_user,
+            json={"invite_code": "NOPE99"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.get_json()["error"], "Invalid invite code")
+
+    def test_join_course_rejects_existing_member(self):
+        """Return 409 when the user already belongs to the course."""
+        response = self.post_json(
+            "/api/courses/join",
+            user=self.student_user,
+            json={"invite_code": "ALGO01"},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.get_json()["error"],
+            "User is already a member of this course",
+        )
+
+    def test_join_course_rejects_professor_accounts(self):
+        """Only student accounts should be able to join via invite code."""
+        response = self.post_json(
+            "/api/courses/join",
+            user=self.instructor_user,
+            json={"invite_code": "ALGO01"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.get_json()["error"],
+            "Only student accounts can join courses via invite code",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
