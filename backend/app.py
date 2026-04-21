@@ -67,7 +67,10 @@ def create_app() -> Flask:
     # Detection: Railway reliably injects RAILWAY_ENVIRONMENT; FLASK_ENV was
     # removed in Flask 2.3 and cannot be relied on.
     is_production = bool(os.environ.get("RAILWAY_ENVIRONMENT"))
-    weak_secrets = {"", "dev-secret-key", "CHANGE_ME"}
+    # Known-weak values that must not be used in prod. The team default
+    # "cs162-forum-ai-notetaker-2026" is checked in to the public repo
+    # (see .env.example) so it counts as public and is blocked here too.
+    weak_secrets = {"", "dev-secret-key", "CHANGE_ME", "cs162-forum-ai-notetaker-2026"}
     if is_production:
         if os.environ.get("JWT_SECRET_KEY", "") in weak_secrets:
             raise RuntimeError(
