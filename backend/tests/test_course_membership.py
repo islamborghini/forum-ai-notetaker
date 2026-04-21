@@ -44,6 +44,8 @@ class CourseMembershipTests(unittest.TestCase):
         self.app.register_blueprint(courses_bp, url_prefix="/api/courses")
         self.client = self.app.test_client()
 
+        # Keep the shared fixture small: one target course, one outside
+        # course, and just enough users to exercise join/member checks.
         with db.get_connection() as conn:
             conn.executescript(
                 """
@@ -99,6 +101,8 @@ class CourseMembershipTests(unittest.TestCase):
         """Send an authenticated JSON POST request as the given user."""
         headers = {"Authorization": "Bearer test-token"}
 
+        # Patch auth at the middleware boundary so route tests stay
+        # focused on course behavior instead of JWT details.
         with patch("middleware.auth.verify_token", return_value=user):
             return self.client.post(path, json=json, headers=headers)
 
@@ -106,6 +110,8 @@ class CourseMembershipTests(unittest.TestCase):
         """Send an authenticated GET request as the given user."""
         headers = {"Authorization": "Bearer test-token"}
 
+        # Patch auth at the middleware boundary so route tests stay
+        # focused on course behavior instead of JWT details.
         with patch("middleware.auth.verify_token", return_value=user):
             return self.client.get(path, headers=headers)
 
