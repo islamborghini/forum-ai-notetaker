@@ -210,6 +210,42 @@ class CourseMembershipTests(unittest.TestCase):
             "Only student accounts can join courses via invite code",
         )
 
+    def test_student_member_can_view_course_details_without_invite_code(self):
+        """Student members should see course details but not the invite code."""
+        response = self.get_json("/api/courses/1", user=self.student_user)
+
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["message"], "Course retrieved")
+
+        data = payload["data"]
+        self.assertEqual(data["id"], 1)
+        self.assertEqual(data["name"], "Algorithms")
+        self.assertEqual(data["your_role"], "student")
+        self.assertNotIn("invite_code", data)
+
+        member_roles = {member["user_id"]: member["role"] for member in data["members"]}
+        self.assertEqual(member_roles[1], "instructor")
+        self.assertEqual(member_roles[2], "student")
+
+    def test_instructor_member_can_view_course_details_with_invite_code(self):
+        """Instructors should receive the invite code in course details."""
+        response = self.get_json("/api/courses/1", user=self.instructor_user)
+
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["message"], "Course retrieved")
+
+        data = payload["data"]
+        self.assertEqual(data["id"], 1)
+        self.assertEqual(data["name"], "Algorithms")
+        self.assertEqual(data["your_role"], "instructor")
+        self.assertEqual(data["invite_code"], "ALGO01")
+
 
 if __name__ == "__main__":
     unittest.main()
