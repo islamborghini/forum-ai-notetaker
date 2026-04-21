@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { searchSessions } from "../api/backend";
 import { getSessionStatusLabel } from "../utils/sessionStatus";
 
+function formatMatchLocations(matchedIn) {
+  if (!Array.isArray(matchedIn) || matchedIn.length === 0) {
+    return "session";
+  }
+
+  return matchedIn.join(", ");
+}
+
 export default function Search() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -65,15 +73,29 @@ export default function Search() {
       {results.length > 0 ? (
         <ul className="session-list">
           {results.map((session) => (
-            <li className="session-card" key={session.id}>
+            <li
+              className="session-card"
+              key={session.session_id ?? session.id}
+            >
               <div>
                 <strong>{session.title}</strong>
                 <p className="muted-text">{session.original_filename}</p>
                 <p className="muted-text">
                   Status: {getSessionStatusLabel(session.status)}
                 </p>
+                <p className="muted-text">
+                  Match found in: {formatMatchLocations(session.matched_in)}
+                </p>
+                {session.transcript_snippet ? (
+                  <p className="muted-text">{session.transcript_snippet}</p>
+                ) : null}
+                {session.notes_snippet ? (
+                  <p className="muted-text">{session.notes_snippet}</p>
+                ) : null}
               </div>
-              <Link to={`/notes/${session.id}`}>View transcript/notes</Link>
+              <Link to={`/notes/${session.session_id ?? session.id}`}>
+                View transcript/notes
+              </Link>
             </li>
           ))}
         </ul>
