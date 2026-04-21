@@ -25,6 +25,9 @@ function formatSegmentTime(seconds) {
   return `${hh}:${mm}:${ss}`;
 }
 
+const TERMINAL_STATUSES = ["notes_generated", "failed"];
+const POLL_INTERVAL_MS = 4000;
+
 export default function Notes() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
@@ -35,37 +38,45 @@ export default function Notes() {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId = null;
+    let firstLoad = true;
 
     async function loadData() {
-      setLoading(true);
-      setError("");
+      if (firstLoad) {
+        setLoading(true);
+        setError("");
+      }
 
-      try {
-        const results = await Promise.allSettled([
-          getSession(id),
-          getTranscript(id),
-          getNotes(id),
-        ]);
+      const results = await Promise.allSettled([
+        getSession(id),
+        getTranscript(id),
+        getNotes(id),
+      ]);
+      if (cancelled) return;
 
-        if (cancelled) return;
-
-        if (results[0].status === "rejected") {
+      if (results[0].status === "rejected") {
+        if (firstLoad) {
           setError(results[0].reason?.message || "Failed to load session.");
-          return;
+          setLoading(false);
+        } else {
+          timeoutId = setTimeout(loadData, POLL_INTERVAL_MS);
         }
+        return;
+      }
 
-        setSession(results[0].value.data);
+      const sess = results[0].value.data;
+      setSession(sess);
+      if (results[1].status === "fulfilled" && results[1].value?.data) {
+        setTranscript(results[1].value.data);
+      }
+      if (results[2].status === "fulfilled" && results[2].value?.data) {
+        setNotes(results[2].value.data);
+      }
+      if (firstLoad) setLoading(false);
+      firstLoad = false;
 
-        if (results[1].status === "fulfilled") {
-          setTranscript(results[1].value.data);
-        }
-        if (results[2].status === "fulfilled") {
-          setNotes(results[2].value.data);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err.message || "Failed to load notes.");
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!TERMINAL_STATUSES.includes(sess?.status)) {
+        timeoutId = setTimeout(loadData, POLL_INTERVAL_MS);
       }
     }
 
@@ -73,6 +84,7 @@ export default function Notes() {
 
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [id]);
 
