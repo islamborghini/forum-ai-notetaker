@@ -71,6 +71,7 @@ def trigger_pipeline(file_path: str, session_id: int) -> None:
 
         print(f"[STATUS] Session {session_id} → notes_generated")
         update_session_status(session_id, "notes_generated")
+
     except Exception:
         logger.exception("Pipeline failed for session %s", session_id)
         print(f"[STATUS] Session {session_id} → failed")
