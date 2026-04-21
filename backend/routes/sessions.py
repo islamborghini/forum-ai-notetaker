@@ -16,6 +16,7 @@ only see sessions belonging to courses they are enrolled in.
 
 import mimetypes
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from flask import Blueprint, current_app, g, request, send_file
@@ -23,6 +24,7 @@ from flask import Blueprint, current_app, g, request, send_file
 from middleware.auth import auth_required
 from pipeline.trigger import trigger_pipeline
 from services.auth import verify_token
+from pipeline.trigger import run_pipeline_async
 from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
 from services.search_service import search
 from services.session_service import (
@@ -32,6 +34,8 @@ from services.session_service import (
 )
 from utils.responses import error_response, success_response
 from utils.validators import allowed_file, safe_filename
+
+executor = ThreadPoolExecutor(max_workers=2)
 
 sessions_bp = Blueprint("sessions", __name__)
 
@@ -168,9 +172,25 @@ def upload_session():
     3. stores the uploaded recording with a unique filename
     4. creates a session record and starts processing
 
-    Uploads are restricted to instructional roles, meaning the user
-    must be a TA or instructor in the target course.
+    IMPORTANT: This endpoint returns IMMEDIATELY (non-blocking).
+    The pipeline runs in a background thread. The response includes
+    the session_id, which can be used to poll the session status
+    as the pipeline processes.
+
+    Requirements:
+    - the user must be authenticated
+    - a course_id must be provided in the request
+    - the user must be a TA or professor for that course
+
+    Important:
+    The current database schema does not yet link sessions to courses.
+    Because of this, course_id is used only for permission validation
+    at upload time and is not persisted with the session.
+
+    This keeps the permission logic in place without introducing
+    inconsistencies with the existing data model.
     """
+    print(f"[UPLOAD] Request received from user {g.user['id']}")
     if "file" not in request.files:
         return error_response("No file provided", 400)
 
@@ -226,6 +246,13 @@ def upload_session():
         course_id=course_id,
     )
 
-    trigger_pipeline(stored_path, session["id"])
+    print(f"[UPLOAD] File saved for session {session['id']}: {original_filename}")
+    print(f"[UPLOAD] Starting background pipeline thread for session {session['id']}...")
+
+    app = current_app._get_current_object()
+    executor.submit(run_pipeline_async, stored_path, session["id"], app)
+
+    print(f"[UPLOAD] Background thread started. Returning response immediately.")
+    print(f"[UPLOAD] Session {session['id']} status will update as pipeline progresses")
 
     return success_response("Recording uploaded successfully", session, 201)

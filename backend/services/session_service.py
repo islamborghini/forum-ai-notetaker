@@ -109,33 +109,6 @@ def fetch_sessions_for_user(user_id: int) -> list[dict]:
     return [_row_to_dict(row) for row in rows]
 
 
-def search_sessions_for_user(user_id: int, query: str) -> list[dict]:
-    """
-    Search the authenticated user's course sessions by title or transcript content.
-    """
-    like_query = f"%{query}%"
-
-    with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT DISTINCT s.id, s.title, s.original_filename, s.stored_path,
-                   s.status, s.course_id, s.created_at, s.updated_at
-            FROM sessions s
-            JOIN course_members cm ON cm.course_id = s.course_id
-            LEFT JOIN transcripts t ON t.session_id = s.id
-            WHERE cm.user_id = ?
-              AND (
-                  s.title LIKE ? COLLATE NOCASE
-                  OR t.content LIKE ? COLLATE NOCASE
-              )
-            ORDER BY s.created_at DESC
-            """,
-            (user_id, like_query, like_query),
-        ).fetchall()
-
-    return [_row_to_dict(row) for row in rows]
-
-
 def fetch_one_session(session_id: int) -> Optional[dict]:
     """
     Retrieve a single session by ID.
@@ -236,4 +209,32 @@ def update_session_status(session_id: int, new_status: str) -> None:
             """,
             (new_status, session_id),
         )
+        conn.commit()
+
+
+def recover_interrupted_processing_sessions() -> None:
+    """
+    Mark any sessions stuck in processing as failed on startup.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id
+            FROM sessions
+            WHERE status = 'processing'
+            """
+        ).fetchall()
+
+        for row in rows:
+            session_id = row["id"]
+            conn.execute(
+                """
+                UPDATE sessions
+                SET status = 'failed', updated_at = datetime('now')
+                WHERE id = ?
+                """,
+                (session_id,),
+            )
+            print(f"[RECOVERY] Session {session_id} marked as failed")
+
         conn.commit()
