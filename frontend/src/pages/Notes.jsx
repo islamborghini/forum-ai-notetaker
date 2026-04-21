@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getSession, getNotes, getTranscript } from "../api/backend";
 import {
   getSessionStatusLabel,
   SESSION_STATUS_LABELS,
 } from "../utils/sessionStatus";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm", "mkv"]);
+
+function getFileExtension(filename) {
+  if (!filename || !filename.includes(".")) return "";
+  return filename.split(".").pop().toLowerCase();
+}
 
 function formatTimestamp(value) {
   if (!value) return "Unknown";
@@ -25,6 +33,9 @@ function formatSegmentTime(seconds) {
   return `${hh}:${mm}:${ss}`;
 }
 
+const TERMINAL_STATUSES = ["notes_generated", "failed"];
+const POLL_INTERVAL_MS = 4000;
+
 export default function Notes() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
@@ -32,40 +43,69 @@ export default function Notes() {
   const [session, setSession] = useState(null);
   const [transcript, setTranscript] = useState(null);
   const [notes, setNotes] = useState(null);
+  const mediaRef = useRef(null);
+
+  const mediaUrl = useMemo(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return "";
+    const params = new URLSearchParams({ token });
+    return `${API_BASE}/api/sessions/${id}/media?${params.toString()}`;
+  }, [id]);
+
+  const isVideo = VIDEO_EXTENSIONS.has(
+    getFileExtension(session?.original_filename)
+  );
+
+  function handleSegmentClick(startSeconds) {
+    const el = mediaRef.current;
+    if (!el) return;
+    el.currentTime = Math.max(0, Number(startSeconds) || 0);
+    el.play().catch(() => {
+      // Autoplay blocked or not ready yet — leave the seek in place.
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId = null;
+    let firstLoad = true;
 
     async function loadData() {
-      setLoading(true);
-      setError("");
+      if (firstLoad) {
+        setLoading(true);
+        setError("");
+      }
 
-      try {
-        const results = await Promise.allSettled([
-          getSession(id),
-          getTranscript(id),
-          getNotes(id),
-        ]);
+      const results = await Promise.allSettled([
+        getSession(id),
+        getTranscript(id),
+        getNotes(id),
+      ]);
+      if (cancelled) return;
 
-        if (cancelled) return;
-
-        if (results[0].status === "rejected") {
+      if (results[0].status === "rejected") {
+        if (firstLoad) {
           setError(results[0].reason?.message || "Failed to load session.");
-          return;
+          setLoading(false);
+        } else {
+          timeoutId = setTimeout(loadData, POLL_INTERVAL_MS);
         }
+        return;
+      }
 
-        setSession(results[0].value.data);
+      const sess = results[0].value.data;
+      setSession(sess);
+      if (results[1].status === "fulfilled" && results[1].value?.data) {
+        setTranscript(results[1].value.data);
+      }
+      if (results[2].status === "fulfilled" && results[2].value?.data) {
+        setNotes(results[2].value.data);
+      }
+      if (firstLoad) setLoading(false);
+      firstLoad = false;
 
-        if (results[1].status === "fulfilled") {
-          setTranscript(results[1].value.data);
-        }
-        if (results[2].status === "fulfilled") {
-          setNotes(results[2].value.data);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err.message || "Failed to load notes.");
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (!TERMINAL_STATUSES.includes(sess?.status)) {
+        timeoutId = setTimeout(loadData, POLL_INTERVAL_MS);
       }
     }
 
@@ -73,6 +113,7 @@ export default function Notes() {
 
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [id]);
 
@@ -181,6 +222,31 @@ export default function Notes() {
         ) : null}
       </section>
 
+      {mediaUrl && hasTranscript ? (
+        <section className="notes-section">
+          <h2 className="section-heading">Recording</h2>
+          <div className="notes-block">
+            {isVideo ? (
+              <video
+                ref={mediaRef}
+                src={mediaUrl}
+                controls
+                preload="metadata"
+                style={{ width: "100%", maxHeight: "420px" }}
+              />
+            ) : (
+              <audio
+                ref={mediaRef}
+                src={mediaUrl}
+                controls
+                preload="metadata"
+                style={{ width: "100%" }}
+              />
+            )}
+          </div>
+        </section>
+      ) : null}
+
       <section className="notes-section">
         <h2 className="section-heading">Transcript</h2>
 
@@ -190,9 +256,14 @@ export default function Notes() {
               <ol className="transcript-segments">
                 {segments.map((seg, index) => (
                   <li key={`${seg.start}-${index}`}>
-                    <span className="transcript-timestamp">
+                    <button
+                      type="button"
+                      className="transcript-timestamp transcript-seek"
+                      onClick={() => handleSegmentClick(seg.start)}
+                      title="Jump to this moment"
+                    >
                       {formatSegmentTime(seg.start)}
-                    </span>
+                    </button>
                     <span className="transcript-text">{seg.text}</span>
                   </li>
                 ))}

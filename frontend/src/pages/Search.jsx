@@ -72,28 +72,27 @@ export default function Search() {
 
       {results.length > 0 ? (
         <ul className="session-list">
-          {results.map((session) => (
-            <li
-              className="session-card"
-              key={session.session_id ?? session.id}
-            >
+          {results.map((result) => (
+            <li className="session-card" key={result.session_id ?? result.id}>
               <div>
-                <strong>{session.title}</strong>
-                <p className="muted-text">{session.original_filename}</p>
-                <p className="muted-text">
-                  Status: {getSessionStatusLabel(session.status)}
-                </p>
-                <p className="muted-text">
-                  Match found in: {formatMatchLocations(session.matched_in)}
-                </p>
-                {session.transcript_snippet ? (
-                  <p className="muted-text">{session.transcript_snippet}</p>
+                <strong>{result.title}</strong>
+                {result.original_filename ? (
+                  <p className="muted-text">{result.original_filename}</p>
                 ) : null}
-                {session.notes_snippet ? (
-                  <p className="muted-text">{session.notes_snippet}</p>
+                <p className="muted-text">
+                  Status: {getSessionStatusLabel(result.status)}
+                </p>
+                <p className="muted-text">
+                  Match found in: {formatMatchLocations(result.matched_in)}
+                </p>
+                {result.transcript_snippet ? (
+                  <p className="muted-text">{result.transcript_snippet}</p>
+                ) : null}
+                {result.notes_snippet ? (
+                  <p className="muted-text">{result.notes_snippet}</p>
                 ) : null}
               </div>
-              <Link to={`/notes/${session.session_id ?? session.id}`}>
+              <Link to={`/notes/${result.session_id ?? result.id}`}>
                 View transcript/notes
               </Link>
             </li>
