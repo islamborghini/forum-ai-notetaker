@@ -136,11 +136,33 @@ def _call_groq_for_chunk(client: Groq, chunk_text: str) -> dict:
             },
         ],
         temperature=0.2,
+        response_format={"type": "json_object"},
     )
 
     content = response.choices[0].message.content
-    payload = json.loads(content)
+    try:
+        payload = json.loads(_strip_json_fences(content))
+    except (json.JSONDecodeError, TypeError):
+        logger.error(
+            "Groq returned non-JSON content. finish_reason=%s raw=%r",
+            getattr(response.choices[0], "finish_reason", None),
+            content,
+        )
+        raise
     return _validate_notes_payload(payload)
+
+
+_JSON_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.IGNORECASE)
+
+
+def _strip_json_fences(content: str | None) -> str:
+    """
+    Remove ```json ... ``` fences that models sometimes wrap JSON in,
+    even when asked for raw JSON.
+    """
+    if not content:
+        return ""
+    return _JSON_FENCE_RE.sub("", content).strip()
 
 
 def _dedupe_preserving_order(items: list[str]) -> list[str]:
