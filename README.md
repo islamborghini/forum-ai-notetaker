@@ -243,3 +243,5 @@ Inside Docker this is a non-issue — the model is baked into the image.
 **Upload returns `course_id is required`.** Every upload must include a `course_id` form field for a course the user can post to (instructor or TA).
 
 **Upload returns 403 `You do not have permission to upload to this course`.** Only the course's professor or a TA can upload. Promote the user via `PATCH /api/courses/<id>/members/<user_id>` with body `{"role": "ta"}`.
+
+Demo Video: https://drive.google.com/file/d/11JSakbIamDS8JBap28sZX6Nz741hunM5/view?usp=sharing
