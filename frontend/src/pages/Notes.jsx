@@ -175,6 +175,14 @@ export default function Notes() {
         </p>
       ) : null}
 
+      {status === "notes_failed" ? (
+        <p className="error-text" role="alert">
+          We couldn&apos;t generate notes for this transcript. This often happens
+          with very long recordings that exceed the note-generation token budget.
+          The transcript is still available below.
+        </p>
+      ) : null}
+
       <section className="notes-section">
         <h2 className="section-heading">Study Notes</h2>
 

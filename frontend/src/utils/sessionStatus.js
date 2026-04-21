@@ -3,6 +3,7 @@ export const SESSION_STATUS_LABELS = {
   processing: "Processing",
   transcribed: "Transcript Ready",
   notes_generated: "Notes Ready",
+  notes_failed: "Notes Failed",
   failed: "Failed",
 };
 
@@ -11,6 +12,7 @@ export const SESSION_STATUS_FILTERS = [
   { value: "processing", label: "Processing" },
   { value: "transcribed", label: "Transcript Ready" },
   { value: "notes_generated", label: "Notes Ready" },
+  { value: "notes_failed", label: "Notes Failed" },
   { value: "failed", label: "Failed" },
 ];
 

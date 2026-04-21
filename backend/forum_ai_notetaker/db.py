@@ -15,6 +15,44 @@ def _column_exists(connection: sqlite3.Connection, table_name: str, column_name:
     return any(row[1] == column_name for row in rows)
 
 
+def _sessions_status_check_includes(connection: sqlite3.Connection, value: str) -> bool:
+    row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sessions'"
+    ).fetchone()
+    return bool(row) and value in (row[0] or "")
+
+
+def _migrate_sessions_status_check(connection: sqlite3.Connection) -> None:
+    """
+    Rebuild the sessions table so the status CHECK constraint accepts
+    'notes_failed'. SQLite cannot alter a CHECK in place, so we copy
+    the data through a temporary table.
+    """
+    connection.executescript(
+        """
+        CREATE TABLE sessions_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            original_filename TEXT NOT NULL,
+            stored_path TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'uploaded'
+                CHECK (status IN ('uploaded', 'processing', 'transcribed', 'notes_generated', 'notes_failed', 'failed')),
+            course_id INTEGER DEFAULT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL
+        );
+        INSERT INTO sessions_new (id, title, original_filename, stored_path, status, course_id, created_at, updated_at)
+            SELECT id, title, original_filename, stored_path, status, course_id, created_at, updated_at FROM sessions;
+        DROP TABLE sessions;
+        ALTER TABLE sessions_new RENAME TO sessions;
+        CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+        CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at);
+        CREATE INDEX IF NOT EXISTS idx_sessions_course_id ON sessions(course_id);
+        """
+    )
+
+
 def _run_migrations(connection: sqlite3.Connection) -> None:
     if not _column_exists(connection, "sessions", "course_id"):
         connection.execute(
@@ -39,6 +77,9 @@ def _run_migrations(connection: sqlite3.Connection) -> None:
             "ALTER TABLE transcripts "
             "ADD COLUMN segments TEXT NOT NULL DEFAULT '[]'"
         )
+
+    if not _sessions_status_check_includes(connection, "notes_failed"):
+        _migrate_sessions_status_check(connection)
 
 
 def resolve_db_path(db_path: str | Path | None = None) -> Path:

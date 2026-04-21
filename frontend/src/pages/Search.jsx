@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { searchSessions } from "../api/backend";
 import { getSessionStatusLabel } from "../utils/sessionStatus";
 
+function formatMatchLocations(matchedIn) {
+  if (!Array.isArray(matchedIn) || matchedIn.length === 0) {
+    return "session";
+  }
+
+  return matchedIn.join(", ");
+}
+
 export default function Search() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -65,17 +73,18 @@ export default function Search() {
       {results.length > 0 ? (
         <ul className="session-list">
           {results.map((result) => (
-            <li className="session-card" key={result.session_id}>
+            <li className="session-card" key={result.session_id ?? result.id}>
               <div>
                 <strong>{result.title}</strong>
+                {result.original_filename ? (
+                  <p className="muted-text">{result.original_filename}</p>
+                ) : null}
                 <p className="muted-text">
                   Status: {getSessionStatusLabel(result.status)}
                 </p>
-                {result.matched_in?.length > 0 ? (
-                  <p className="muted-text">
-                    Matched in: {result.matched_in.join(", ")}
-                  </p>
-                ) : null}
+                <p className="muted-text">
+                  Match found in: {formatMatchLocations(result.matched_in)}
+                </p>
                 {result.transcript_snippet ? (
                   <p className="muted-text">{result.transcript_snippet}</p>
                 ) : null}
@@ -83,7 +92,9 @@ export default function Search() {
                   <p className="muted-text">{result.notes_snippet}</p>
                 ) : null}
               </div>
-              <Link to={`/notes/${result.session_id}`}>View transcript/notes</Link>
+              <Link to={`/notes/${result.session_id ?? result.id}`}>
+                View transcript/notes
+              </Link>
             </li>
           ))}
         </ul>

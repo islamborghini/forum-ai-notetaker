@@ -96,8 +96,10 @@ def _build_result(session: dict, query: str) -> dict:
         notes_snippet = _make_snippet(combined_notes, query)
 
     return {
+        "id": session["id"],
         "session_id": session["id"],
         "title": title,
+        "original_filename": session.get("original_filename"),
         "course_id": session.get("course_id"),
         "status": session.get("status"),
         "matched_in": matched_in,

@@ -55,7 +55,9 @@ export default function Dashboard() {
     const ready = sessions.filter(
       (s) => s.status === "transcribed" || s.status === "notes_generated"
     ).length;
-    const failed = sessions.filter((s) => s.status === "failed").length;
+    const failed = sessions.filter(
+      (s) => s.status === "failed" || s.status === "notes_failed"
+    ).length;
     return { total, ready, failed };
   }, [sessions]);
 
