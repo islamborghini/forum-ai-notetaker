@@ -29,7 +29,7 @@ Upload recording -> Extract audio -> Transcribe with Whisper -> Save transcript 
 1. Create and activate a virtual environment.
 2. Install dependencies from `requirements.txt`.
 3. Install `openai-whisper` if it is not already available in your environment.
-4. Add required environment variables in `backend/.env`.
+4. Add environment variables in `backend/.env` if you want to override local defaults.
 5. Start the Flask server.
 
 Example:
@@ -43,9 +43,10 @@ pip install openai-whisper
 python app.py
 ```
 
-Required environment variables:
+Environment variables:
 
-- `GROQ_API_KEY` - used to generate notes from transcripts with Groq
+- `JWT_SECRET_KEY` - optional for local use; if omitted, auth falls back to a bundled dev secret
+- `GROQ_API_KEY` - optional; if omitted, notes fall back to the local heuristic summary flow
 
 ---
 

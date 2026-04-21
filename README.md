@@ -35,7 +35,9 @@ docker compose up --build
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:5000
 
-The Groq API key is **provided separately** with the assignment submission — no signup needed. If `.env` is empty or missing, the app still works end-to-end: note generation falls back to a local heuristic summary instead of calling Groq.
+The Groq API key is **provided separately** with the assignment submission — no signup needed. If `.env` is empty or missing, the app still works end-to-end:
+- authentication falls back to a bundled local JWT secret for signup/login
+- note generation falls back to a local heuristic summary instead of calling Groq
 
 ### Architecture
 
@@ -72,6 +74,7 @@ python app.py
 ```
 
 The server runs at `http://127.0.0.1:5000`. The database is auto-initialized on startup.
+For local manual runs, `JWT_SECRET_KEY` is optional; if omitted, the app uses the same bundled dev secret as Docker.
 
 ### Frontend
 
