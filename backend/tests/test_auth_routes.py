@@ -13,6 +13,7 @@ import unittest
 from pathlib import Path
 
 from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -63,6 +64,27 @@ class AuthRouteTests(unittest.TestCase):
             path,
             headers={"Authorization": f"Bearer {token}"},
         )
+
+    def seed_user(
+        self,
+        *,
+        email="student@example.com",
+        name="Student",
+        password="strongpass123",
+        user_type="student",
+    ):
+        """Insert a user row with a properly hashed password for login tests."""
+        password_hash = generate_password_hash(password, method="pbkdf2:sha256")
+
+        with db.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO users (email, name, password_hash, user_type, created_at, updated_at)
+                VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+                """,
+                (email, name, password_hash, user_type),
+            )
+            conn.commit()
 
     def test_register_creates_user_and_returns_token(self):
         """
@@ -210,6 +232,72 @@ class AuthRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.get_json()["error"], "Email is already registered")
+
+    def test_login_returns_token_and_safe_user_for_valid_credentials(self):
+        """Valid credentials should return a token and omit password_hash from the response."""
+        self.seed_user()
+
+        response = self.post_json(
+            "/api/auth/login",
+            {
+                "email": "student@example.com",
+                "password": "strongpass123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["message"], "Login successful")
+        self.assertIn("token", payload["data"])
+
+        user = payload["data"]["user"]
+        self.assertEqual(user["email"], "student@example.com")
+        self.assertEqual(user["name"], "Student")
+        self.assertEqual(user["user_type"], "student")
+        self.assertNotIn("password_hash", user)
+
+    def test_login_requires_email_and_password(self):
+        """Reject login when either email or password is missing."""
+        response = self.post_json(
+            "/api/auth/login",
+            {
+                "email": "",
+                "password": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json()["error"], "Email and password are required")
+
+    def test_login_rejects_wrong_password(self):
+        """Reject login when the password does not match the stored hash."""
+        self.seed_user()
+
+        response = self.post_json(
+            "/api/auth/login",
+            {
+                "email": "student@example.com",
+                "password": "wrongpass123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()["error"], "Invalid credentials")
+
+    def test_login_rejects_unknown_email(self):
+        """Reject login when no user exists for the submitted email."""
+        response = self.post_json(
+            "/api/auth/login",
+            {
+                "email": "missing@example.com",
+                "password": "strongpass123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.get_json()["error"], "Invalid credentials")
 
 
 if __name__ == "__main__":
