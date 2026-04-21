@@ -210,3 +210,31 @@ def update_session_status(session_id: int, new_status: str) -> None:
             (new_status, session_id),
         )
         conn.commit()
+
+
+def recover_interrupted_processing_sessions() -> None:
+    """
+    Mark any sessions stuck in processing as failed on startup.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id
+            FROM sessions
+            WHERE status = 'processing'
+            """
+        ).fetchall()
+
+        for row in rows:
+            session_id = row["id"]
+            conn.execute(
+                """
+                UPDATE sessions
+                SET status = 'failed', updated_at = datetime('now')
+                WHERE id = ?
+                """,
+                (session_id,),
+            )
+            print(f"[RECOVERY] Session {session_id} marked as failed")
+
+        conn.commit()

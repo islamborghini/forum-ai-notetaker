@@ -14,13 +14,17 @@ performed before session data is returned. This ensures that users
 only see sessions belonging to courses they are enrolled in.
 """
 
+import mimetypes
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from flask import Blueprint, current_app, g, request
+from flask import Blueprint, current_app, g, request, send_file
 
 from middleware.auth import auth_required
 from pipeline.trigger import trigger_pipeline
+from services.auth import verify_token
+from pipeline.trigger import run_pipeline_async
 from services.course_service import get_course_by_id, is_course_member, is_ta_or_professor
 from services.search_service import search
 from services.session_service import (
@@ -30,6 +34,8 @@ from services.session_service import (
 )
 from utils.responses import error_response, success_response
 from utils.validators import allowed_file, safe_filename
+
+executor = ThreadPoolExecutor(max_workers=2)
 
 sessions_bp = Blueprint("sessions", __name__)
 
@@ -99,6 +105,61 @@ def get_session(session_id: int):
     return success_response("Session retrieved successfully", session)
 
 
+@sessions_bp.route("/<int:session_id>/media", methods=["GET"])
+def get_session_media(session_id: int):
+    """
+    Stream the original uploaded recording for a session.
+
+    Auth is accepted via either the Authorization header or a
+    `?token=` query parameter. The query-param fallback exists because
+    <audio>/<video> tags cannot attach custom headers, and streaming
+    large files as blobs defeats HTTP range requests (seeking).
+
+    Returns the file with `conditional=True` so Flask handles
+    HTTP Range requests, enabling in-browser seeking.
+    """
+    token = ""
+    auth_header = request.headers.get("Authorization", "").strip()
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        token = request.args.get("token", "").strip()
+
+    if not token:
+        return error_response("Missing token", 401)
+
+    user = verify_token(token)
+    if not user:
+        return error_response("Invalid or expired token", 401)
+
+    session = fetch_one_session(session_id)
+    if not session:
+        return error_response("Session not found", 404)
+
+    if session.get("course_id"):
+        if not is_course_member(session["course_id"], user["id"]):
+            return error_response("You are not a member of this course", 403)
+
+    stored_path = Path(session["stored_path"]).expanduser()
+    if not stored_path.is_absolute():
+        backend_root = Path(__file__).resolve().parent.parent
+        stored_path = (backend_root / stored_path).resolve()
+
+    if not stored_path.exists():
+        return error_response("Recording file not found", 404)
+
+    mime_type, _ = mimetypes.guess_type(str(stored_path))
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    return send_file(
+        str(stored_path),
+        mimetype=mime_type,
+        conditional=True,
+        download_name=session.get("original_filename"),
+    )
+
+
 @sessions_bp.route("/upload", methods=["POST"])
 @auth_required
 def upload_session():
@@ -111,9 +172,25 @@ def upload_session():
     3. stores the uploaded recording with a unique filename
     4. creates a session record and starts processing
 
-    Uploads are restricted to instructional roles, meaning the user
-    must be a TA or instructor in the target course.
+    IMPORTANT: This endpoint returns IMMEDIATELY (non-blocking).
+    The pipeline runs in a background thread. The response includes
+    the session_id, which can be used to poll the session status
+    as the pipeline processes.
+
+    Requirements:
+    - the user must be authenticated
+    - a course_id must be provided in the request
+    - the user must be a TA or professor for that course
+
+    Important:
+    The current database schema does not yet link sessions to courses.
+    Because of this, course_id is used only for permission validation
+    at upload time and is not persisted with the session.
+
+    This keeps the permission logic in place without introducing
+    inconsistencies with the existing data model.
     """
+    print(f"[UPLOAD] Request received from user {g.user['id']}")
     if "file" not in request.files:
         return error_response("No file provided", 400)
 
@@ -169,6 +246,13 @@ def upload_session():
         course_id=course_id,
     )
 
-    trigger_pipeline(stored_path, session["id"])
+    print(f"[UPLOAD] File saved for session {session['id']}: {original_filename}")
+    print(f"[UPLOAD] Starting background pipeline thread for session {session['id']}...")
+
+    app = current_app._get_current_object()
+    executor.submit(run_pipeline_async, stored_path, session["id"], app)
+
+    print(f"[UPLOAD] Background thread started. Returning response immediately.")
+    print(f"[UPLOAD] Session {session['id']} status will update as pipeline progresses")
 
     return success_response("Recording uploaded successfully", session, 201)

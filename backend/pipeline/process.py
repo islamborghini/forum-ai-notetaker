@@ -14,7 +14,7 @@ from .audio import extract_audio
 from .transcribe import transcribe_audio
 
 
-def process_recording(file_path: str) -> str:
+def process_recording(file_path: str) -> tuple[str, list[dict]]:
     """
     Run the end-to-end Sprint 1 processing pipeline for one recording file.
 
@@ -22,7 +22,7 @@ def process_recording(file_path: str) -> str:
         file_path: Path to uploaded video file.
 
     Returns:
-        Transcript text.
+        A tuple of (transcript_text, segments).
 
     Raises:
         ValueError: If file_path is invalid.
@@ -40,11 +40,11 @@ def process_recording(file_path: str) -> str:
 
     # Step 2: Transcribe audio
     try:
-        transcript = transcribe_audio(audio_path)
+        transcript, segments = transcribe_audio(audio_path)
     except (ValueError, FileNotFoundError) as exc:
         # Re-raise path validation errors as-is
         raise
     except RuntimeError as exc:
         raise RuntimeError(f"Transcription failed: {exc}") from exc
 
-    return transcript
+    return transcript, segments

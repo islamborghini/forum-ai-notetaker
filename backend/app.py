@@ -31,6 +31,7 @@ from flask_cors import CORS
 load_dotenv()
 
 from forum_ai_notetaker.db import init_db
+from services.session_service import recover_interrupted_processing_sessions
 
 # Import route groups
 from routes.auth import auth_bp
@@ -65,6 +66,7 @@ def create_app() -> Flask:
 
     # Create database tables if they do not exist yet.
     init_db()
+    recover_interrupted_processing_sessions()
 
     # Resolve upload directory from the backend root so it stays stable
     # regardless of the process working directory.

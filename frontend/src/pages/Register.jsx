@@ -10,6 +10,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [userType, setUserType] = useState("student");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +37,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(name.trim(), email.trim().toLowerCase(), password);
+      await register(name.trim(), email.trim().toLowerCase(), password, userType);
       navigate("/", { replace: true });
     } catch (err) {
       setError(err.message || "Registration failed.");
@@ -88,6 +89,34 @@ export default function Register() {
               disabled={loading}
               autoComplete="new-password"
             />
+          </div>
+
+          <div className="form-field">
+            <label>I am a</label>
+            <div className="user-type-options">
+              <label className="user-type-option">
+                <input
+                  type="radio"
+                  name="user-type"
+                  value="student"
+                  checked={userType === "student"}
+                  onChange={() => setUserType("student")}
+                  disabled={loading}
+                />
+                <span>Student</span>
+              </label>
+              <label className="user-type-option">
+                <input
+                  type="radio"
+                  name="user-type"
+                  value="professor"
+                  checked={userType === "professor"}
+                  onChange={() => setUserType("professor")}
+                  disabled={loading}
+                />
+                <span>Professor</span>
+              </label>
+            </div>
           </div>
 
           <div className="form-field">
